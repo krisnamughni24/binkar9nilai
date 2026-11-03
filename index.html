@@ -477,6 +477,7 @@ function onCredential(resp) {
     authError = "";
     if (resuming) { sendState = { busy: false, reauth: false, error: "" }; submitAnswers(); return; }
     st = load() || fresh();
+    st.screen = "intro";
     if (!st.id.nama && auth.name) { st.id.nama = auth.name; save(); }
     lastPts = points(); render();
     checkStatus();
@@ -500,6 +501,7 @@ window.addEventListener("load", initGis);
 const KEY_BASE = "ekspedisi9nilai.v1";
 const KEY = () => KEY_BASE + ":" + (auth ? auth.email : "anon");
 let st = load() || fresh();
+if (st.screen !== "finish" || !st.sentAt) st.screen = "intro";
 function fresh() { return { screen: "intro", id: { nama: "", grup: "", elemen: "", kelas: "" }, a: Array(9).fill(null), b: Array(B.length).fill(null), qi: 0, sent: false }; }
 function load() { try { const s = JSON.parse(localStorage.getItem(KEY())); return s && s.b && s.b.length === B.length ? s : null; } catch (e) { return null; } }
 function save() { try { localStorage.setItem(KEY(), JSON.stringify(st)); } catch (e) {} }
@@ -591,11 +593,11 @@ const screens = {
         <li>Identitas<small>Nama, grup, elemen, kelas</small></li>
         <li>Cermin diri<small>9 nilai</small></li>
         <li>9 Pos<small>62 pernyataan</small></li>
-        <li>Kirim<small>lewat Google Form</small></li>
+        <li>Kirim<small>${CFG.submitUrl ? "sekali klik dari sini" : "lewat Google Form"}</small></li>
       </ol>
       <div class="stack" style="gap:8px">
-        <button class="btn gold block" onclick="go('${resume ? target : "id"}')">${resume ? "Lanjutkan ekspedisi" : "Mulai ekspedisi"}</button>
-        ${resume ? `<button class="btn link" onclick="restart()">Mulai dari awal</button>` : ""}
+        <button class="btn gold block" ${checking ? "disabled" : ""} onclick="go('${resume ? target : "id"}')">${checking ? "Memeriksa status pengisianmu…" : resume ? "Lanjutkan ekspedisi" : "Mulai ekspedisi"}</button>
+        ${resume && !checking ? `<button class="btn link" onclick="restart()">Mulai dari awal</button>` : ""}
       </div>
     </section>
     <section class="card stack">
@@ -775,22 +777,27 @@ function applyServerRecord(rec) {
   st.sentAt = rec.at; st.sentUpdated = false; st.screen = "finish";
   save();
 }
+let checking = false;
 async function checkStatus() {
   if (!CFG.submitUrl || !auth || !auth.token || !auth.exp || auth.exp - Date.now() < 60 * 1000) return;
+  checking = true; render();
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 10000);
   try {
-    const res = await fetch(CFG.submitUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "status", idToken: auth.token }), redirect: "follow" });
+    const res = await fetch(CFG.submitUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "status", idToken: auth.token }), redirect: "follow", signal: ctl.signal });
     const out = await res.json();
+    checking = false;
     if (out.ok && out.submitted) {
       const wasLocal = !!st.sentAt;
       applyServerRecord(out); lastPts = points(); render();
       if (!wasLocal) toast("Kamu sudah pernah mengirim jawaban");
     } else if (out.ok && out.submitted === false && st.sentAt) {
       // The row was deleted in the sheet: unlock so this serdik can send again.
-      st.sentAt = null; st.sentUpdated = false; st.screen = "finish"; save();
+      st.sentAt = null; st.sentUpdated = false; st.screen = "intro"; save();
       lastPts = points(); render();
       toast("Jawabanmu bisa dikirim ulang");
-    }
-  } catch (e) { /* offline: the receiver still rejects a second submission */ }
+    } else render();
+  } catch (e) { /* offline or slow: the receiver still rejects a second submission */ }
+  finally { clearTimeout(timer); if (checking) { checking = false; render(); } }
 }
 
 async function submitAnswers() {
