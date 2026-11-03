@@ -33,26 +33,12 @@ img { max-width: 100%; }
   --f-body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --r: 14px;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #0F1620; --paper-2: #16202C; --card: #1A2533; --ink: #E7ECEF; --ink-2: #A3B0BD;
-    --line: #2C3A4A; --brass: #E0AE52; --brass-soft: #3A2F1A; --teal: #6FBDB3; --teal-soft: #1C3634;
-    --on-accent: #10161E; --focus: #6FBDB3; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --paper: #0F1620; --paper-2: #16202C; --card: #1A2533; --ink: #E7ECEF; --ink-2: #A3B0BD;
-  --line: #2C3A4A; --brass: #E0AE52; --brass-soft: #3A2F1A; --teal: #6FBDB3; --teal-soft: #1C3634;
-  --on-accent: #10161E; --focus: #6FBDB3; color-scheme: dark;
+  --geo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' fill='none' stroke='%23000' stroke-width='1.6'%3E%3Ccircle cx='16' cy='16' r='8'/%3E%3Cpath d='M40 24 48 9 56 24Z'/%3E%3Crect x='8' y='40' width='16' height='16'/%3E%3Cpath d='M48 40 56 48 48 56 40 48Z'/%3E%3C/svg%3E");
+  --blue: #2F62B8;
 }
 * { box-sizing: border-box; }
 body {
   background: var(--paper);
-  background-image:
-    linear-gradient(var(--paper-2) 1px, transparent 1px),
-    linear-gradient(90deg, var(--paper-2) 1px, transparent 1px);
-  background-size: 32px 32px;
   color: var(--ink);
   font-family: var(--f-body);
   font-size: 16px;
@@ -130,8 +116,6 @@ input[type=text]:focus { border-color: var(--teal); outline: none; box-shadow: 0
   font-family: var(--f-display); font-weight: 800; font-size: 22px; padding: 0 12px; }
 .choice[aria-checked="true"] { background: var(--teal); border-color: var(--teal); color: var(--on-accent); }
 .err { color: #B4402E; font-size: 14px; }
-:root[data-theme="dark"] .err { color: #F08A75; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .err { color: #F08A75; } }
 
 /* scale */
 .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
@@ -288,15 +272,50 @@ a.btn { text-decoration: none; }
 .who b { word-break: break-all; }
 .avatar { width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer; background: var(--teal); color: var(--on-accent); font-weight: 700; font-size: 14px; flex: 0 0 auto; }
 .bar.anon .route, .bar.anon .score { visibility: hidden; }
-.bar.anon .brand { display: block; }
+.bar.anon .brand { display: block; white-space: nowrap; }
 .nowrap { white-space: nowrap; }
+
+/* ---------- Geometric accent (shared motif with Kanban Senat) ---------- */
+body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--teal); opacity: .07;
+  -webkit-mask: var(--geo) 0 0 / 64px 64px repeat; mask: var(--geo) 0 0 / 64px 64px repeat;
+  -webkit-mask-image: var(--geo), linear-gradient(160deg, #000 0%, transparent 45%, transparent 70%, #000 100%);
+  -webkit-mask-composite: source-in; mask-image: var(--geo), linear-gradient(160deg, #000 0%, transparent 45%, transparent 70%, #000 100%);
+  mask-size: 64px 64px, 100% 100%; -webkit-mask-size: 64px 64px, 100% 100%; mask-repeat: repeat, no-repeat; -webkit-mask-repeat: repeat, no-repeat; mask-composite: intersect; }
+.geo { position: relative; isolation: isolate; overflow: hidden; }
+.geo::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--geo-c, #fff); opacity: var(--geo-o, .18);
+  -webkit-mask: var(--geo) 0 0 / 64px 64px repeat; mask: var(--geo) 0 0 / 64px 64px repeat; }
+.band { margin: -24px -24px 4px; padding: 22px 24px 20px; border-radius: var(--r) var(--r) 0 0; color: #fff;
+  background: linear-gradient(120deg, var(--ink) 0%, var(--teal) 60%, var(--blue) 120%); display: flex; flex-direction: column; gap: 8px; }
+.band .eyebrow { color: #F6E3B8; }
+.band h1, .band h2 { color: #fff; }
+.band .shapes { display: flex; gap: 8px; align-items: center; }
+.band .shapes i { display: block; width: 14px; height: 14px; }
+.band .shapes .c { border-radius: 50%; background: #F6E3B8; }
+.band .shapes .t { clip-path: polygon(50% 0, 100% 100%, 0 100%); background: #fff; opacity: .85; }
+.band .shapes .s { background: var(--brass); }
+.band .shapes .d { transform: rotate(45deg) scale(.8); border: 2px solid #fff; }
+@media (max-width: 520px) { .band { margin: -20px -20px 4px; padding: 20px; } }
+.bar.geo { --geo-c: var(--teal); --geo-o: .08; overflow: visible; }
+.stamp-wrap.geo { --geo-c: var(--brass); --geo-o: .16; border-radius: 12px; padding: 16px; width: 100%; display: grid; place-items: center; background: var(--brass-soft); }
+
+/* ---------- Dropdowns ---------- */
+.fields3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 420px) { .fields3 { grid-template-columns: 1fr 1fr; } .fields3 > :last-child { grid-column: 1 / -1; } }
+.select { position: relative; }
+.select select { appearance: none; -webkit-appearance: none; width: 100%; font: inherit; font-weight: 600; padding: 12px 40px 12px 14px; min-height: 48px;
+  border-radius: 10px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.select select:focus { border-color: var(--teal); outline: none; box-shadow: 0 0 0 3px var(--teal-soft); }
+.select select.empty { color: var(--ink-2); font-weight: 400; }
+.select::after { content: ""; position: absolute; right: 16px; top: 50%; width: 8px; height: 8px; border-right: 2px solid var(--ink-2); border-bottom: 2px solid var(--ink-2);
+  transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.select.ok select { border-color: var(--teal); background: var(--card); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 <script src="config.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer onload="initGis()"></script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="window.initGis && window.initGis()"></script>
 </head>
 <body>
-<header class="bar">
+<header class="bar geo">
   <div class="bar-in">
     <div class="brand">9 Nilai<small>Ekspedisi P3MD</small></div>
     <div class="route" id="route" aria-label="Kemajuan pos"></div>
@@ -512,8 +531,8 @@ const screens = {
       if (el && gisReady) google.accounts.id.renderButton(el, { theme: "outline", size: "large", shape: "pill", text: "signin_with", locale: "id", width: Math.min(320, el.clientWidth || 320) });
     }, 0);
     return `<section class="card stack">
-      <span class="eyebrow">Tim Binkar · Senat P3MD</span>
-      <h1>Survei Pemetaan 9 Nilai</h1>
+      <div class="band geo"><div class="shapes" aria-hidden="true"><i class="c"></i><i class="t"></i><i class="s"></i><i class="d"></i></div><span class="eyebrow">Tim Binkar · Senat P3MD</span>
+      <h1>Survei Pemetaan 9 Nilai</h1></div>
       <p class="lede">Halo, rekan Serdik! Masuk dulu dengan akun Google P3MD-mu. Jawaban hanya bisa dikirim dari akun <b class="nowrap">@${esc(DOMAIN || "p3md.sbm-itb.ac.id")}</b>, jadi kita pastikan dari awal.</p>
       ${CFG.googleClientId ? `<div class="gwrap"><div id="gbtn" class="gbtn"></div>${gisReady ? "" : `<p class="muted" style="font-size:14px">Memuat tombol masuk…</p>`}</div>`
         : `<p class="status warn">Tombol masuk belum aktif: panitia belum mengisi Google Client ID di config.js.</p>`}
@@ -526,8 +545,8 @@ const screens = {
     const resume = st.a.some(v => v !== null) || st.b.some(v => v !== null);
     const target = !idDone() ? "id" : !aDone() ? "a" : "map";
     return `<section class="card stack">
-      <span class="eyebrow">Tim Binkar · Senat P3MD</span>
-      <h1>Survei Pemetaan 9 Nilai</h1>
+      <div class="band geo"><div class="shapes" aria-hidden="true"><i class="c"></i><i class="t"></i><i class="s"></i><i class="d"></i></div><span class="eyebrow">Tim Binkar · Senat P3MD</span>
+      <h1>Survei Pemetaan 9 Nilai</h1></div>
       <p class="lede">Halo, rekan Serdik! Lihat bagaimana 9 Nilai P3MD terwujud dalam keseharian kita. Lewati 9 pos, kumpulkan lencananya.</p>
       <div class="facts-line"><span>71 pernyataan</span><span>± 8 menit</span><span>Tersimpan otomatis</span></div>
       <ol class="steps">
@@ -552,18 +571,22 @@ const screens = {
   },
 
   id() {
-    const grp = (k, opts, lab) => `<div><span id="lb-${k}" style="font-weight:600;display:block;margin-bottom:6px">${lab} <span style="color:var(--brass)">*</span></span>
-      <div class="choices" role="radiogroup" aria-labelledby="lb-${k}">${opts.map(o =>
-        `<button type="button" class="choice" role="radio" id="${k}-${o}" aria-checked="${st.id[k] === o}" onclick="setId('${k}','${o}')">${o}</button>`).join("")}</div></div>`;
+    const sel = (k, opts, lab, pre) => `<div><label class="f" for="${k}">${lab} <span class="req">*</span></label>
+      <div class="select ${st.id[k] ? "ok" : ""}"><select id="${k}" class="${st.id[k] ? "" : "empty"}" onchange="setId('${k}', this.value)">
+        <option value="" ${st.id[k] ? "" : "selected"} disabled>Pilih ${lab.toLowerCase()}</option>
+        ${opts.map(o => `<option value="${o}" ${st.id[k] === o ? "selected" : ""}>${pre}${o}</option>`).join("")}
+      </select></div></div>`;
     return `<section class="card stack">
-      <span class="eyebrow">Langkah 1 dari 4 · Identitas</span>
-      <h2>Siapa yang berangkat?</h2>
+      <div class="band geo"><span class="eyebrow">Langkah 1 dari 4 · Identitas</span>
+      <h2>Siapa yang berangkat?</h2></div>
       <div class="who"><span>Masuk sebagai <b>${esc(auth.email)}</b></span><button class="btn link" onclick="signOut()">Ganti akun</button></div>
       <div><label class="f" for="nama">Nama <span class="req">*</span></label>
         <input type="text" id="nama" autocomplete="name" value="${esc(st.id.nama)}" oninput="st.id.nama=this.value;save()" placeholder="Nama lengkap"></div>
-      ${grp("grup", ["1","2","3","4"], "Grup")}
-      ${grp("elemen", ["1","2","3"], "Elemen")}
-      ${grp("kelas", ["A","B","C","D","E","F","G","H"], "Kelas")}
+      <div class="fields3">
+        ${sel("grup", ["1","2","3","4"], "Grup", "Grup ")}
+        ${sel("elemen", ["1","2","3"], "Elemen", "Elemen ")}
+        ${sel("kelas", ["A","B","C","D","E","F","G","H"], "Kelas", "Kelas ")}
+      </div>
       <p class="err" id="iderr" hidden>Lengkapi nama, grup, elemen, dan kelas dulu.</p>
       <div class="row end"><button class="btn alt" onclick="go('intro')">Kembali</button><button class="btn" onclick="idNext()">Lanjut</button></div>
     </section>`;
@@ -573,8 +596,8 @@ const screens = {
     const n = st.a.filter(v => v !== null).length;
     const cur = st.a.findIndex(v => v === null);
     return `<section class="card stack">
-      <span class="eyebrow">Langkah 2 dari 4 · Bagian A</span>
-      <h2>Cermin diri</h2>
+      <div class="band geo"><span class="eyebrow">Langkah 2 dari 4 · Bagian A</span>
+      <h2>Cermin diri</h2></div>
       <p class="muted">Seberapa jauh kamu sudah menerapkan setiap nilai dalam keseharianmu?</p>
       <div class="legend"><span>1 · Sangat kurang</span><span>5 · Sangat maksimal</span></div>
       <div>${VALUES.map((v, i) => `<div class="arow ${i === cur ? "cur" : ""}" id="arow${i}">
@@ -593,8 +616,8 @@ const screens = {
     const next = st.b.findIndex(v => v === null);
     const nowPos = next >= 0 ? B[next][0] : -1;
     return `<section class="card stack">
-      <span class="eyebrow">Langkah 3 dari 4 · Bagian B</span>
-      <h2>${done === 9 ? "Semua pos tercapai" : done ? `${done} dari 9 pos tercapai` : "Sembilan pos menunggu"}</h2>
+      <div class="band geo"><span class="eyebrow">Langkah 3 dari 4 · Bagian B</span>
+      <h2>${done === 9 ? "Semua pos tercapai" : done ? `${done} dari 9 pos tercapai` : "Sembilan pos menunggu"}</h2></div>
       <p class="muted">Pos 1–5 menilai perilaku serdik di lingkungan P3MD. Pos 6–9 menilai dirimu sendiri.</p>
       ${next >= 0 ? `<button class="btn gold block" onclick="go('q',{qi:${next}})">${done || st.b.some(v => v !== null) ? `Lanjut ke Pos ${nowPos + 1}` : "Berangkat ke Pos 1"}</button>`
                   : `<button class="btn gold block" onclick="go('finish')">Lanjut ke pengiriman</button>`}
@@ -636,7 +659,7 @@ const screens = {
     const next = st.b.findIndex(v => v === null);
     const breather = done === 5 ? `<p class="note">Lebih dari separuh jalan. Tarik napas sebentar; empat pos terakhir menilai dirimu sendiri.</p>` : "";
     return `<section class="card stack center">
-      ${insignia(p, true, "big stamp")}
+      <div class="stamp-wrap geo">${insignia(p, true, "big stamp")}</div>
       <span class="eyebrow">Pos ${p + 1} tercapai · +25 poin</span>
       <h2>Lencana ${esc(VALUES[p].name)}</h2>
       <p class="muted">${done} dari 9 lencana terkumpul.</p>
@@ -658,8 +681,8 @@ const screens = {
       ...VALUES.map((v, p) => `<button class="tile ${missPos.includes(p) ? "miss" : ""}" onclick="openPos(${p})"><b>Pos ${p + 1}</b>${missPos.includes(p) ? "Belum lengkap" : esc(SHORT[p])}</button>`)
     ].join("");
     return `<section class="card stack">
-      <span class="eyebrow">Langkah 4 dari 4 · Kirim</span>
-      <h2>${ok ? `Siap dikirim, ${esc(st.id.nama.trim().split(" ")[0] || "Serdik")}` : "Hampir selesai"}</h2>
+      <div class="band geo"><span class="eyebrow">Langkah 4 dari 4 · Kirim</span>
+      <h2>${ok ? `Siap dikirim, ${esc(st.id.nama.trim().split(" ")[0] || "Serdik")}` : "Hampir selesai"}</h2></div>
       ${ok ? `<div class="status">✓ Semua 71 pernyataan sudah terisi · ${points()} poin · ${rankOf(points())}</div>`
            : `<div class="status warn">Masih ada bagian yang belum lengkap. Ketuk kotak berwarna di bawah untuk melengkapinya.</div>`}
       ${wired ? `<ol class="steps-mini">
@@ -692,7 +715,7 @@ function restart() {
     <div class="row"><button class="btn" onclick="st=fresh();lastPts=0;go('intro')">Ya, hapus</button><button class="btn alt" onclick="document.getElementById('confirm').remove()">Batal</button></div></section>`);
   window.scrollTo({ top: 0 });
 }
-function setId(k, v) { st.id[k] = v; save(); render(); document.getElementById(k + "-" + v).focus(); }
+function setId(k, v) { st.id[k] = v; save(); render(); const el = document.getElementById(k); if (el) el.focus({ preventScroll: true }); }
 function idNext() { if (idDone()) go(aDone() ? "map" : "a"); else document.getElementById("iderr").hidden = false; }
 function setA(i, v) {
   const first = st.a[i] === null; st.a[i] = v; save(); render();
