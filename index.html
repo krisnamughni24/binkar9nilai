@@ -784,6 +784,11 @@ async function checkStatus() {
       const wasLocal = !!st.sentAt;
       applyServerRecord(out); lastPts = points(); render();
       if (!wasLocal) toast("Kamu sudah pernah mengirim jawaban");
+    } else if (out.ok && out.submitted === false && st.sentAt) {
+      // The row was deleted in the sheet: unlock so this serdik can send again.
+      st.sentAt = null; st.sentUpdated = false; st.screen = "finish"; save();
+      lastPts = points(); render();
+      toast("Jawabanmu bisa dikirim ulang");
     }
   } catch (e) { /* offline: the receiver still rejects a second submission */ }
 }
