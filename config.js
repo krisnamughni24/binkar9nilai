@@ -7,7 +7,7 @@ window.APP_CONFIG = {
 
   /* Web app URL of the Apps Script receiver (apps-script/Code.gs), ends with /exec.
      When set, answers are sent with one click and the Google Form fallback is not used. */
-  submitUrl: "",
+  submitUrl: "https://script.google.com/macros/s/AKfycbxInqjsxXKl8Lkr4jStxJUPi5quNlX6-oFjODOEHqBPqRnaUEGWWffdgIGhXos7geUcng/exec",
 
   /* Only Google accounts from this Workspace domain may continue. */
   allowedDomain: "p3md.sbm-itb.ac.id",
