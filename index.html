@@ -518,7 +518,7 @@ const screens = {
       ${CFG.googleClientId ? `<div class="gwrap"><div id="gbtn" class="gbtn"></div>${gisReady ? "" : `<p class="muted" style="font-size:14px">Memuat tombol masuk…</p>`}</div>`
         : `<p class="status warn">Tombol masuk belum aktif: panitia belum mengisi Google Client ID di config.js.</p>`}
       ${authError ? `<p class="err" role="alert">${esc(authError)}</p>` : ""}
-      <p class="muted" style="font-size:13.5px">Kami hanya membaca nama dan alamat email akunmu untuk memastikan kamu serdik P3MD. Tidak ada kata sandi yang dilihat atau disimpan.</p>
+      <p class="muted" style="font-size:13.5px">Kami hanya membaca nama dan alamat email akunmu untuk memastikan kamu serdik P3MD. Tidak ada kata sandi yang dilihat atau disimpan. <a href="privasi.html" style="color:var(--teal)">Kebijakan privasi</a></p>
     </section>`;
   },
 
