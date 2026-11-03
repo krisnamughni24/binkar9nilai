@@ -8,7 +8,8 @@
  * Every request carries the Google ID token the site received at sign-in.
  * The token is verified here, on Google's servers, before anything is written:
  * correct audience (our OAuth Client ID), verified email, allowed domain,
- * not expired. One row per email: a second submission updates that row.
+ * not expired. One submission per email: a second submission is rejected
+ * and the earlier answers are returned so the site can show them read-only.
  *
  * No secrets live in this file. The Client ID is public by design.
  */
@@ -153,14 +154,12 @@ function submit_(who, body) {
     const now = new Date();
     const emails = sh.getLastRow() > 1 ? sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().map(r => String(r[0]).toLowerCase()) : [];
     const idx = emails.indexOf(who.email);
-    const base = [nama, grup, elemen, kelas].concat(a, b);
     if (idx >= 0) {
-      const row = idx + 2;
-      const first = sh.getRange(row, 1).getValue();
-      const count = Number(sh.getRange(row, HEADERS.length).getValue()) || 1;
-      sh.getRange(row, 1, 1, HEADERS.length).setValues([[first, who.email].concat(base, [now, count + 1])]);
-      return { ok: true, updated: true, at: now.toISOString() };
+      const prev = rowToRecord_(sh.getRange(idx + 2, 1, 1, HEADERS.length).getValues()[0]);
+      return Object.assign({ ok: false, error: "already_submitted",
+        message: "Akun ini sudah mengirim jawaban. Setiap serdik hanya bisa mengirim satu kali." }, prev);
     }
+    const base = [nama, grup, elemen, kelas].concat(a, b);
     sh.appendRow([now, who.email].concat(base, [now, 1]));
     return { ok: true, updated: false, at: now.toISOString() };
   } finally {
@@ -174,10 +173,23 @@ function status_(email) {
   const rows = sh.getRange(2, 1, sh.getLastRow() - 1, HEADERS.length).getValues();
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i][1]).toLowerCase() === email) {
-      return { ok: true, submitted: true, at: new Date(rows[i][HEADERS.length - 2]).toISOString() };
+      return Object.assign({ ok: true }, rowToRecord_(rows[i]));
     }
   }
   return { ok: true, submitted: false };
+}
+
+/* Turn a sheet row back into the shape the site stores, so a serdik who
+   already submitted sees their own answers (read-only) on any device. */
+function rowToRecord_(r) {
+  const num = v => (v === "" || v === null) ? null : Number(v);
+  return {
+    submitted: true,
+    at: new Date(r[0]).toISOString(),
+    nama: String(r[2]), grup: String(r[3]), elemen: String(r[4]), kelas: String(r[5]),
+    a: r.slice(6, 6 + N_A).map(num),
+    b: r.slice(6 + N_A, 6 + N_A + N_B).map(num)
+  };
 }
 
 function clean_(arr, n, optional) {

@@ -86,11 +86,14 @@ How identity stays trustworthy: the browser sends the Google ID token from
 sign-in, and the script verifies it with Google (`oauth2.googleapis.com/tokeninfo`)
 before writing: audience must equal our Client ID, email must be verified,
 domain must be `p3md.sbm-itb.ac.id`, token must not be expired. One row per
-email; sending again updates that row and increments "Jumlah kirim".
+email: a second submission is rejected (`already_submitted`) and the earlier
+answers are returned, so the site shows them read-only on any device.
 ID tokens last one hour, so a serdik who returns later is asked to confirm the
 Google account once before sending.
 
 Points, rank and the reflection radar stay hidden until the answers are sent.
+After sign-in the site asks the receiver (`action: "status"`) whether the
+account already submitted; if so, it jumps straight to the locked results.
 
 ### Setup
 

@@ -479,6 +479,7 @@ function onCredential(resp) {
     st = load() || fresh();
     if (!st.id.nama && auth.name) { st.id.nama = auth.name; save(); }
     lastPts = points(); render();
+    checkStatus();
   } catch (e) { authError = "Login gagal dibaca. Coba lagi."; render(); }
 }
 function signOut() {
@@ -554,6 +555,7 @@ function go(screen, extra = {}) { Object.assign(st, extra, { screen }); save(); 
 /* ---------- Screens ---------- */
 function render() {
   chrome();
+  if (auth && locked() && st.screen !== "finish") st.screen = "finish";
   const f = auth ? (screens[st.screen] || screens.intro) : screens.login;
   $app.innerHTML = f();
   const focus = $app.querySelector("[data-autofocus]");
@@ -722,7 +724,7 @@ const screens = {
       ${ok ? `<div class="status">✓ Semua 71 pernyataan sudah terisi</div>`
            : `<div class="status warn">Masih ada bagian yang belum lengkap. Ketuk kotak berwarna di bawah untuk melengkapinya.</div>`}
       ${CFG.submitUrl ? sendBlock(ok) : legacyBlock(ok, wired)}
-      <div class="tiles">${tiles}</div>
+      ${locked() ? "" : `<div class="tiles">${tiles}</div>`}
     </section>
     ${revealed() ? `<section class="card stack center reveal" id="reveal">
       <div class="band geo" style="align-items:center;text-align:center"><span class="eyebrow">Ekspedisi selesai</span>
@@ -747,9 +749,8 @@ function fmtTime(iso) {
 function sendBlock(ok) {
   if (isSent() && !sendState.busy && !sendState.reauth) {
     return `<div class="sent geo"><div class="sent-mark" aria-hidden="true">✓</div>
-        <div><b>Jawabanmu sudah terkirim</b><p>${st.sentUpdated ? "Diperbarui" : "Tercatat"} pada ${esc(fmtTime(st.sentAt))} atas nama ${esc(auth.email)}. Terima kasih sudah menyelesaikan ekspedisi!</p></div></div>
-      ${sendState.error ? `<p class="err" role="alert">${esc(sendState.error)}</p>` : ""}
-      <button class="btn link" onclick="submitAnswers()">Ada yang salah? Ubah jawaban lewat kotak di bawah lalu kirim ulang</button>`;
+        <div><b>Jawabanmu sudah terkirim</b><p>Tercatat pada ${esc(fmtTime(st.sentAt))} atas nama ${esc(auth.email)}. Terima kasih sudah menyelesaikan ekspedisi!</p></div></div>
+      <p class="muted" style="font-size:13.5px">Jawaban sudah dikunci. Setiap serdik hanya bisa mengirim satu kali.</p>`;
   }
   if (sendState.reauth) {
     setTimeout(() => {
@@ -764,7 +765,31 @@ function sendBlock(ok) {
     <button class="btn gold block" id="sendbtn" ${ok && !sendState.busy ? "" : "disabled"} onclick="submitAnswers()">${sendState.busy ? "Mengirim…" : "Kirim jawaban"}</button>
     ${sendState.error ? `<p class="err" role="alert">${esc(sendState.error)}</p>` : ""}`;
 }
+/* One submission per account: the receiver is the source of truth. */
+function locked() { return !!CFG.submitUrl && !!st.sentAt; }
+function applyServerRecord(rec) {
+  const toB = (v, i) => (v === null || v === "" ? (B[i][3] ? null : SKIP) : Number(v));
+  st.id = { nama: rec.nama || st.id.nama, grup: String(rec.grup || ""), elemen: String(rec.elemen || ""), kelas: String(rec.kelas || "") };
+  if (Array.isArray(rec.a) && rec.a.length === 9) st.a = rec.a.map(v => (v === null || v === "" ? null : Number(v)));
+  if (Array.isArray(rec.b) && rec.b.length === B.length) st.b = rec.b.map(toB);
+  st.sentAt = rec.at; st.sentUpdated = false; st.screen = "finish";
+  save();
+}
+async function checkStatus() {
+  if (!CFG.submitUrl || !auth || !auth.token || !auth.exp || auth.exp - Date.now() < 60 * 1000) return;
+  try {
+    const res = await fetch(CFG.submitUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "status", idToken: auth.token }), redirect: "follow" });
+    const out = await res.json();
+    if (out.ok && out.submitted) {
+      const wasLocal = !!st.sentAt;
+      applyServerRecord(out); lastPts = points(); render();
+      if (!wasLocal) toast("Kamu sudah pernah mengirim jawaban");
+    }
+  } catch (e) { /* offline: the receiver still rejects a second submission */ }
+}
+
 async function submitAnswers() {
+  if (locked()) return;
   if (sendState.busy) return;
   if (!auth || !auth.token || !auth.exp || auth.exp - Date.now() < 2 * 60 * 1000) {
     sendState = { busy: false, reauth: true, error: "" }; render(); return;
@@ -784,6 +809,12 @@ async function submitAnswers() {
       render();
       toast(out.updated ? "Jawaban diperbarui" : "Jawaban terkirim");
       if (first) celebrate();
+      return;
+    } else if (out.error === "already_submitted") {
+      applyServerRecord(out);
+      sendState = { busy: false, reauth: false, error: "" };
+      lastPts = points(); render();
+      toast("Akun ini sudah pernah mengirim jawaban");
       return;
     } else if (out.error === "token_invalid" || out.error === "no_token") {
       sendState = { busy: false, reauth: true, error: "" };
@@ -912,6 +943,7 @@ document.addEventListener("keydown", e => {
 
 lastPts = points();
 render();
+checkStatus();
 </script>
 </body>
 </html>
