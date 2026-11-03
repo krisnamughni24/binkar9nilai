@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Survei Pemetaan 9 Nilai P3MD dalam bentuk ekspedisi 9 pos.">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); color-scheme: light; }
+html, body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Ekspedisi 9 Nilai P3MD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a field-expedition route. Sticky status strip (route pins + points), one focused card per screen, map-paper ground. */
+:root {
+  --paper: #ECEFE8;
+  --paper-2: #E2E7DD;
+  --card: #FBFCF9;
+  --ink: #18263A;
+  --ink-2: #4A5869;
+  --line: #C9D1C4;
+  --brass: #A8761C;
+  --brass-soft: #F1E2C2;
+  --teal: #2B6A64;
+  --teal-soft: #D5E6E2;
+  --on-accent: #FFFFFF;
+  --focus: #2B6A64;
+  --f-display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", Impact, sans-serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F1620; --paper-2: #16202C; --card: #1A2533; --ink: #E7ECEF; --ink-2: #A3B0BD;
+    --line: #2C3A4A; --brass: #E0AE52; --brass-soft: #3A2F1A; --teal: #6FBDB3; --teal-soft: #1C3634;
+    --on-accent: #10161E; --focus: #6FBDB3; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0F1620; --paper-2: #16202C; --card: #1A2533; --ink: #E7ECEF; --ink-2: #A3B0BD;
+  --line: #2C3A4A; --brass: #E0AE52; --brass-soft: #3A2F1A; --teal: #6FBDB3; --teal-soft: #1C3634;
+  --on-accent: #10161E; --focus: #6FBDB3; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper);
+  background-image:
+    linear-gradient(var(--paper-2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-2) 1px, transparent 1px);
+  background-size: 32px 32px;
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.55;
+  min-height: 100%;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--card); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* status strip */
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--card); border-bottom: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 10px;
+}
+.bar-in { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.brand { font-family: var(--f-display); font-weight: 800; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; line-height: 1; }
+.brand small { display: block; font-family: var(--f-mono); font-size: 10.5px; font-weight: 500; letter-spacing: .12em; color: var(--ink-2); margin-top: 3px; }
+.route { flex: 1 1 220px; display: flex; align-items: center; gap: 0; min-width: 0; }
+.pin { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); background: var(--card);
+  display: grid; place-items: center; font-family: var(--f-mono); font-size: 10px; color: var(--ink-2); transition: background .3s, border-color .3s; }
+.pin.on { border-color: var(--teal); color: var(--teal); }
+.pin.done { background: var(--teal); border-color: var(--teal); color: var(--on-accent); }
+.seg { flex: 1 1 auto; height: 2px; background: var(--line); min-width: 4px; }
+.seg.done { background: var(--teal); }
+.score { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.xp { font-family: var(--f-mono); font-size: 13px; background: var(--brass-soft); color: var(--ink); padding: 3px 9px; border-radius: 999px; }
+.xp b { color: var(--brass); }
+.rank { font-family: var(--f-display); font-weight: 600; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.xp.pop { animation: pop .45s ease; }
+@keyframes pop { 40% { transform: scale(1.15); } }
+
+main {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 24px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--teal); }
+h1, h2 { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; letter-spacing: .01em; line-height: 1; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(40px, 9vw, 64px); }
+h2 { font-size: clamp(28px, 6vw, 38px); }
+p { margin: 0; max-width: 62ch; }
+.muted { color: var(--ink-2); }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+ul.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+ul.rules li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; }
+ul.rules li::before { content: ""; width: 10px; height: 10px; margin-top: 7px; border: 2px solid var(--brass); transform: rotate(45deg); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); }
+.chip.self { background: var(--brass-soft); color: var(--ink); }
+.chip.peer { background: var(--teal-soft); color: var(--ink); }
+
+.btn { appearance: none; border: 0; cursor: pointer; border-radius: 10px; padding: 14px 20px; font-weight: 700; font-size: 16px; min-height: 48px;
+  background: var(--ink); color: var(--card); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn:hover { filter: brightness(1.12); }
+.btn:disabled { opacity: .4; cursor: not-allowed; filter: none; }
+.btn.alt { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn.gold { background: var(--brass); color: var(--on-accent); }
+.btn.link { background: none; padding: 8px 4px; min-height: 40px; color: var(--ink-2); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row.end { justify-content: space-between; }
+
+/* identity */
+label.f { font-weight: 600; display: block; margin-bottom: 6px; }
+label.f .req { color: var(--brass); }
+input[type=text] { width: 100%; font: inherit; padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); min-height: 48px; }
+input[type=text]:focus { border-color: var(--teal); outline: none; box-shadow: 0 0 0 3px var(--teal-soft); }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice { min-width: 48px; min-height: 48px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--paper); cursor: pointer;
+  font-family: var(--f-display); font-weight: 800; font-size: 22px; padding: 0 12px; }
+.choice[aria-checked="true"] { background: var(--teal); border-color: var(--teal); color: var(--on-accent); }
+.err { color: #B4402E; font-size: 14px; }
+:root[data-theme="dark"] .err { color: #F08A75; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .err { color: #F08A75; } }
+
+/* scale */
+.scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.opt { cursor: pointer; border: 1.5px solid var(--line); background: var(--paper); border-radius: 12px; min-height: 56px; padding: 8px 4px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: transform .12s, background .2s, border-color .2s; }
+.opt .n { font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; }
+.opt .t { font-size: 11.5px; color: var(--ink-2); text-align: center; line-height: 1.2; }
+.opt:hover { border-color: var(--teal); }
+.opt:active { transform: scale(.96); }
+.opt[aria-checked="true"] { background: var(--teal); border-color: var(--teal); color: var(--on-accent); }
+.opt[aria-checked="true"] .t { color: var(--on-accent); }
+.ends { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-2); margin-top: 6px; }
+
+.arow { display: grid; gap: 10px; padding-block: 16px; border-top: 1px solid var(--line); }
+.arow:first-of-type { border-top: 0; padding-top: 4px; }
+.arow h3 { margin: 0; font-size: 17px; font-weight: 700; display: flex; gap: 10px; align-items: baseline; }
+.arow h3 span { font-family: var(--f-mono); font-size: 12px; color: var(--brass); font-weight: 500; }
+.arow .scale .opt { min-height: 46px; }
+.arow .scale .t { display: none; }
+
+/* question card */
+.qhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dots { display: flex; gap: 5px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.dot.a { background: var(--teal); }
+.dot.c { outline: 2px solid var(--brass); outline-offset: 1px; }
+.statement { font-size: clamp(20px, 4.6vw, 26px); font-weight: 600; line-height: 1.35; letter-spacing: -.005em; min-height: 3.2em; text-wrap: pretty; }
+.qcard { animation: slide .28s ease; }
+@keyframes slide { from { transform: translateY(8px); opacity: .5; } to { transform: none; opacity: 1; } }
+@media (max-width: 520px) {
+  .q-scale { grid-template-columns: 1fr; }
+  .q-scale .opt { flex-direction: row; justify-content: flex-start; gap: 14px; padding: 10px 16px; min-height: 52px; }
+  .q-scale .opt .t { font-size: 15px; text-align: left; }
+}
+.kbd { font-family: var(--f-mono); font-size: 12px; color: var(--ink-2); }
+@media (hover: none) { .kbd { display: none; } }
+
+/* map */
+.route-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.stop { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; align-items: center; padding: 10px 0; position: relative; }
+.stop:not(:last-child)::after { content: ""; position: absolute; left: 27px; top: 58px; bottom: -12px; border-left: 2px dashed var(--line); }
+.stop.done:not(:last-child)::after { border-left-color: var(--teal); border-left-style: solid; }
+.stop .name { font-weight: 700; }
+.stop .sub { font-size: 13px; color: var(--ink-2); }
+.stop button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
+
+/* insignia */
+.ins { width: 56px; height: 56px; position: relative; flex: 0 0 auto; }
+.ins svg { width: 100%; height: 100%; display: block; }
+.ins .base { fill: var(--paper-2); stroke: var(--line); stroke-width: 2; }
+.ins .glyph { fill: none; stroke: var(--ink-2); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; opacity: .45; }
+.ins.got .base { fill: var(--brass); stroke: var(--brass); }
+.ins.got .glyph { stroke: var(--on-accent); opacity: 1; }
+.ins.big { width: 132px; height: 132px; }
+.stamp { animation: stamp .6s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes stamp { from { transform: scale(1.8) rotate(-14deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.center { text-align: center; align-items: center; }
+.center p { margin-inline: auto; }
+.shelf { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
+.shelf .ins { width: 100%; height: auto; aspect-ratio: 1; max-width: 100%; }
+@media (max-width: 520px) { .shelf { grid-template-columns: repeat(5, 1fr); } }
+
+.meter { height: 8px; border-radius: 999px; background: var(--paper-2); overflow: hidden; }
+.meter > i { display: block; height: 100%; background: var(--brass); border-radius: inherit; transition: width .5s ease; }
+
+.radar-box { overflow-x: auto; }
+.radar { width: 100%; max-width: 460px; display: block; margin: 0 auto; }
+.radar text { fill: var(--ink-2); font-family: var(--f-body); font-size: 11px; }
+.radar .grid { fill: none; stroke: var(--line); }
+.radar .area { fill: var(--teal); fill-opacity: .22; stroke: var(--teal); stroke-width: 2; }
+.radar .pt { fill: var(--teal); }
+
+.review-item { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.review-item:first-child { border-top: 0; }
+.status-ok { color: var(--teal); font-weight: 600; font-size: 14px; }
+.status-miss { color: var(--brass); font-weight: 600; font-size: 14px; }
+.note { font-size: 14px; padding: 12px 14px; border-radius: 10px; background: var(--teal-soft); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px); opacity: 0;
+  background: var(--ink); color: var(--card); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; transition: .3s; pointer-events: none; z-index: 20; max-width: calc(100% - 32px); }
+.toast.show { opacity: 1; transform: translateX(-50%); }
+textarea.copy { width: 100%; min-height: 90px; font-family: var(--f-mono); font-size: 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); padding: 10px; }
+/* ---------- UX pass 2 ---------- */
+a.btn { text-decoration: none; }
+.btn.block { width: 100%; }
+@media (max-width: 520px) {
+  .bar { padding-block: 8px; }
+  .bar-in { flex-wrap: nowrap; gap: 10px; }
+  .brand { display: none; }
+  .rank { display: none; }
+  .route { flex: 1 1 auto; }
+  .pin { width: 18px; height: 18px; font-size: 9px; }
+  main { padding-block: 18px 96px; }
+  .card { padding: 20px; }
+  .row.end > .btn:not(.link) { flex: 1 1 0; }
+}
+.lede { font-size: 17px; }
+.facts-line { font-family: var(--f-mono); font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.facts-line span::before { content: "◆ "; color: var(--brass); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; counter-reset: s; }
+.steps li { counter-increment: s; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.3; }
+.steps li::before { content: counter(s); display: block; font-family: var(--f-display); font-weight: 800; font-size: 22px; color: var(--teal); line-height: 1; margin-bottom: 4px; }
+.steps li small { display: block; color: var(--ink-2); font-size: 12px; margin-top: 2px; }
+@media (max-width: 520px) { .steps { grid-template-columns: 1fr 1fr; } }
+
+/* Bagian A */
+.legend { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-2); padding: 8px 12px; background: var(--paper); border-radius: 8px; }
+.arow h3 .ok { margin-left: auto; color: var(--teal); font-family: var(--f-body); font-size: 13px; font-weight: 600; }
+.arow.cur h3 { color: var(--teal); }
+.dock {
+  position: sticky; bottom: 0; z-index: 4; margin: 4px -24px -24px; padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: var(--card); border-top: 1px solid var(--line); border-radius: 0 0 var(--r) var(--r);
+  display: flex; gap: 8px; align-items: center; flex-wrap: nowrap;
+}
+.dock .btn { white-space: nowrap; }
+.dock .count { white-space: nowrap; margin-right: auto; font-family: var(--f-mono); font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .dock { margin: 4px -20px -20px; padding-inline: 20px; } }
+
+/* question */
+.overall { display: flex; align-items: center; gap: 10px; font-family: var(--f-mono); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.overall .meter { flex: 1; height: 4px; }
+.posname { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; font-size: 22px; line-height: 1.05; letter-spacing: .01em; }
+.qnav { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+
+/* map */
+.route-list { position: relative; gap: 8px; }
+.route-list::before { content: ""; position: absolute; left: 27px; top: 28px; bottom: 28px; border-left: 2px dashed var(--line); }
+.stop { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 56px 1fr 20px; gap: 14px; align-items: center; padding: 8px 10px 8px 0; border-radius: 12px; cursor: pointer; position: relative; width: 100%; }
+.stop::after { display: none; }
+.stop:hover .name, .stop:focus-visible .name { color: var(--teal); }
+.stop:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.stop .ins { position: relative; z-index: 1; }
+.stop .mini { height: 4px; border-radius: 999px; background: var(--paper-2); margin-top: 6px; overflow: hidden; max-width: 220px; }
+.stop .mini i { display: block; height: 100%; background: var(--teal); }
+.stop .go { color: var(--ink-2); font-size: 20px; }
+.stop.now { background: var(--teal-soft); padding-left: 0; }
+.stop.now .sub b { color: var(--teal); }
+.ins:not(.got) .base { fill: var(--card); }
+
+/* finish */
+.radar text { font-size: 13px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { all: unset; box-sizing: border-box; cursor: pointer; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--paper); font-size: 13px; line-height: 1.3; }
+.tile b { display: block; font-size: 14px; }
+.tile.miss { border-color: var(--brass); background: var(--brass-soft); }
+.tile:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 520px) { .tiles { grid-template-columns: 1fr 1fr; } }
+.status { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 10px; background: var(--teal-soft); font-weight: 600; font-size: 14.5px; }
+.status.warn { background: var(--brass-soft); }
+.steps-mini { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14.5px; color: var(--ink-2); }
+
+.gwrap { display: grid; gap: 8px; justify-items: start; min-height: 48px; }
+.gbtn { width: 100%; max-width: 320px; }
+.who { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; padding: 10px 14px; border-radius: 10px; background: var(--teal-soft); font-size: 14px; }
+.who b { word-break: break-all; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer; background: var(--teal); color: var(--on-accent); font-weight: 700; font-size: 14px; flex: 0 0 auto; }
+.bar.anon .route, .bar.anon .score { visibility: hidden; }
+.bar.anon .brand { display: block; }
+.nowrap { white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+<script src="config.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="initGis()"></script>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand">9 Nilai<small>Ekspedisi P3MD</small></div>
+    <div class="route" id="route" aria-label="Kemajuan pos"></div>
+    <div class="score"><span class="xp" id="xp" aria-live="polite"><b>0</b> poin</span><span class="rank" id="rank">Kadet</span><button class="avatar" id="avatar" hidden onclick="signOut()" title="Keluar"></button></div>
+  </div>
+</header>
+<main><div class="wrap" id="app"></div></main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ---------- Config (see config.js) ---------- */
+const CFG = window.APP_CONFIG || {};
+const FORM = CFG.form || { publishedId: "", entries: [] };
+const DOMAIN = (CFG.allowedDomain || "").toLowerCase();
+
+/* ---------- Instrument ---------- */
+const VALUES = [
+  { name: "Karakter dan Integritas", glyph: "M28 14 L40 19 V29 C40 37 34 42 28 44 C22 42 16 37 16 29 V19 Z M23 29 L27 33 L34 25" },
+  { name: "Kepemimpinan", glyph: "M28 15 L31.5 24 L41 24.5 L33.5 30.5 L36 40 L28 34.5 L20 40 L22.5 30.5 L15 24.5 L24.5 24 Z" },
+  { name: "Komunikasi dan Adaptabilitas", glyph: "M15 19 H33 V30 H23 L18 34 V30 H15 Z M37 24 H41 V35 H38 V39 L33 35 H25 V33" },
+  { name: "Resiliensi Fisik dan Mental", glyph: "M14 40 L24 22 L30 31 L34 25 L42 40 Z M24 22 L27 27" },
+  { name: "Analytical Thinking dan Problem Solving", glyph: "M25 15 A9 9 0 1 1 25 33 A9 9 0 1 1 25 15 M31.5 30.5 L41 40" },
+  { name: "Manajemen dan Eksekusi", glyph: "M17 18 H39 M17 28 H39 M17 38 H31 M14 18 h0 M35 35 L38 38 L43 32" },
+  { name: "Governance dan Etika Publik", glyph: "M28 14 V42 M20 42 H36 M16 20 H40 M16 20 L12 30 H20 Z M40 20 L36 30 H44 Z" },
+  { name: "Nation Building dan Public Purpose", glyph: "M18 42 V14 M18 15 H39 L35 21 L39 27 H18" },
+  { name: "Collaboration dan Stakeholder Leadership", glyph: "M13 29 L20 22 L27 26 L33 21 L43 29 M20 32 L25 36 M24 29 L30 34 M29 26 L35 31 L31 35" }
+];
+const SHORT = ["Integritas", "Kepemimpinan", "Komunikasi", "Resiliensi", "Analitis", "Eksekusi", "Governance", "Kebangsaan", "Kolaborasi"];
+const S = "Serdik P3MDI ";
+// [pos (0-8), perspective, text, required]
+const B = [
+  [0,"peer",S+"mematuhi aturan bersama saat tidak ada yang mengawasi.",1],
+  [0,"peer",S+"memperlakukan teman, petugas, dan staf pendukung dengan hormat, sama seperti saat menghormati pimpinan.",1],
+  [0,"peer",S+"menegur penyimpangan yang terlihat, meskipun pelakunya teman dekat.",1],
+  [0,"peer",S+"tidak menggunakan fasilitas atau kemudahan yang bukan haknya.",1],
+  [0,"peer",S+"memperlakukan wewenang yang diberikan sebagai amanah, bukan keistimewaan.",1],
+  [0,"peer",S+"hadir tepat waktu pada setiap kegiatan.",1],
+  [1,"peer",S+"memiliki inisiatif yang tinggi untuk menjadi pemimpin, baik dalam lingkungan yang kecil maupun lingkungan yang besar.",1],
+  [1,"peer",S+"memberi instruksi yang jelas saat memimpin tim.",0],
+  [1,"peer",S+"tidak menyalahkan anggota tim ketika hasil kerja tim kurang baik.",1],
+  [1,"peer",S+"menggerakkan tim sampai rencana benar-benar dijalankan.",0],
+  [1,"peer",S+"mengaitkan keputusan tim dengan kepentingan organisasi dan bangsa.",1],
+  [2,"peer",S+"mengubah perilakunya setelah menerima koreksi.",1],
+  [2,"peer",S+"mendengarkan lawan bicara sampai selesai tanpa memotong.",1],
+  [2,"peer","Ketika serdik P3MDI berbeda pendapat, ia mencari kepentingan kedua pihak, bukan hanya mempertahankan posisinya.",1],
+  [2,"peer",S+"menyampaikan ketidaksetujuan dengan bahasa yang santun dan tidak merendahkan.",1],
+  [2,"peer",S+"menjaga hubungan baik dengan pihak yang berbeda pandangan.",1],
+  [2,"peer",S+"tetap bekerja efektif ketika instruksi atau jadwal berubah mendadak.",1],
+  [2,"peer",S+"menyesuaikan cara kerjanya ketika sumber daya berkurang.",1],
+  [3,"peer",S+"menjalani latihan fisik secara teratur dan bertahap sesuai kemampuannya.",1],
+  [3,"peer",S+"bersemangat dalam semua kegiatan, tanpa pernah merasa lelah sedikit pun.",1],
+  [3,"peer",S+"tetap tenang di depan tim saat situasi tidak pasti.",1],
+  [3,"peer",S+"menjaga tidur, makan, dan hidrasi agar tetap pulih saat beban kegiatan tinggi.",1],
+  [3,"peer",S+"tahu dan menerapkan cara yang sehat untuk meredakan tekanan.",1],
+  [3,"peer",S+"mengendalikan emosi saat lelah, ditegur, atau berkonflik.",1],
+  [4,"peer",S+"mampu membedakan fakta, asumsi, opini, dan rumor sebelum menyimpulkan.",1],
+  [4,"peer",S+"mendasarkan rekomendasi pada data atau bukti.",1],
+  [4,"peer",S+"memakai metode seperti 5 Why atau fishbone untuk menganalisis masalah.",1],
+  [4,"peer",S+"menyiapkan lebih dari satu skenario (terbaik, terburuk, paling mungkin) sebelum memutuskan.",1],
+  [4,"peer",S+"menentukan tanda pemicu dan respons untuk setiap skenario yang mungkin terjadi.",1],
+  [4,"peer",S+"tidak pernah bingung saat dihadapkan situasi dinamis yang penuh ketidakpastian.",1],
+  [5,"self","Saya mengubah arahan umum menjadi tugas konkret dengan penanggung jawab dan tenggat.",1],
+  [5,"self","Saya menyusun rencana kerja sebelum memulai tugas besar.",1],
+  [5,"self","Saya memantau progres tugas terhadap target yang ditetapkan.",1],
+  [5,"self","Saya mencatat risiko dan rencana mitigasinya sejak awal tugas.",1],
+  [5,"self","Saya membantu tim memahami alasan perubahan sebelum menjalankannya.",1],
+  [5,"self","Saya segera memperbarui rencana kerja ketika terjadi perubahan.",1],
+  [5,"self","Saya memeriksa kualitas hasil kerja sebelum menyatakannya selesai.",1],
+  [5,"self","Saya memulai pekerjaan atau ide baru tetapi tidak menuntaskannya.",1],
+  [5,"self","Hasil kerja saya sempurna tanpa kekurangan apa pun.",1],
+  [6,"self","Saya memeriksa kesesuaian tindakan saya dengan aturan dan proses sebelum bertindak.",1],
+  [6,"self","Saya mengerjakan tugas kelompok dengan pembagian peran dan catatan kontribusi yang terbuka.",1],
+  [6,"self","Saya membaca aturan atau SOP yang berlaku sebelum menjalankan tugas terkait.",1],
+  [6,"self","Saya memahami batas kewenangan saya dalam setiap peran.",1],
+  [6,"self","Saya mendukung setiap laporan saya dengan bukti.",1],
+  [6,"self","Saya mencari pembenaran saat keputusan saya dipertanyakan.",1],
+  [6,"self","Saya menyampaikan potensi konflik kepentingan sebelum terlibat dalam suatu keputusan.",1],
+  [6,"self","Saya menghindari penggunaan kedekatan atau relasi untuk mendapat kemudahan.",1],
+  [7,"self","Saya menjalankan kewajiban sebagai warga negara dalam perilaku sehari-hari, seperti tertib dan menjaga fasilitas umum.",1],
+  [7,"self","Saya menghormati simbol negara dalam sikap saya saat apel, upacara, dan kegiatan resmi.",1],
+  [7,"self","Saya menghormati perbedaan suku, agama, dan budaya sebagai bagian dari persatuan bangsa.",1],
+  [7,"self","Saya mengambil pelajaran dari sejarah perjuangan bangsa untuk pekerjaan atau keputusan saya.",1],
+  [7,"self","Saya dapat menjelaskan peran negara dan BUMN dalam tugas yang saya kerjakan.",1],
+  [7,"self","Saya mengaitkan tugas saya dengan dampaknya bagi masyarakat.",1],
+  [7,"self","Saya memilih opsi dengan manfaat publik lebih besar saat kepentingan pribadi dan publik berbenturan.",1],
+  [7,"self","Saya memandang jabatan terutama sebagai jalan untuk kepentingan pribadi.",1],
+  [8,"self","Saya memetakan pihak yang berkepentingan beserta pengaruhnya sebelum memulai pekerjaan lintas tim.",1],
+  [8,"self","Saya mengutamakan keberhasilan kelompok saya walaupun merugikan kerja sama lintas kelompok.",1],
+  [8,"self","Saya menepati komitmen yang telah disepakati dengan mitra kerja.",1],
+  [8,"self","Saya memberi pengakuan atas kontribusi pihak lain.",1],
+  [8,"self","Saya memperhitungkan perbedaan logika pemerintah, BUMN, swasta, dan masyarakat saat bekerja sama.",1],
+  [8,"self","Saya mencari solusi yang memberi nilai publik sekaligus dapat dijalankan oleh semua mitra.",1],
+  [8,"self","Saya sependapat dengan semua orang tanpa pernah merasa kesal kepada siapa pun.",1]
+];
+const AGREE = ["Sangat tidak setuju","Tidak setuju","Netral","Setuju","Sangat setuju"];
+const RANKS = [[0,"Kadet"],[150,"Pratama"],[350,"Madya"],[600,"Utama"],[850,"Paripurna"]];
+const SKIP = "skip";
+
+/* ---------- State ---------- */
+/* ---------- Auth ----------
+   Google Identity Services gives us an ID token in the browser. We decode it to
+   read email / name / hosted domain and gate the UI on the allowed domain.
+   This is a UX gate, not server-side verification: the Google Form's
+   "Verified email" + "Restrict to organization" settings remain the real guard. */
+const AUTH_KEY = "ekspedisi9nilai.auth";
+let auth = loadAuth();
+function loadAuth() { try { const a = JSON.parse(localStorage.getItem(AUTH_KEY)); return a && a.email ? a : null; } catch (e) { return null; } }
+function decodeJwt(t) {
+  const p = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+  const json = decodeURIComponent(atob(p).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+  return JSON.parse(json);
+}
+let authError = "";
+function onCredential(resp) {
+  try {
+    const c = decodeJwt(resp.credential);
+    const email = String(c.email || "").toLowerCase();
+    const domainOk = !DOMAIN || (c.hd || "").toLowerCase() === DOMAIN || email.endsWith("@" + DOMAIN);
+    if (!c.email_verified || !domainOk) {
+      authError = `Akun ${email || "ini"} bukan akun @${DOMAIN}. Silakan masuk dengan akun P3MD-mu.`;
+      google.accounts.id.disableAutoSelect();
+      render(); return;
+    }
+    auth = { email, name: c.name || "" };
+    try { localStorage.setItem(AUTH_KEY, JSON.stringify(auth)); } catch (e) {}
+    authError = "";
+    st = load() || fresh();
+    if (!st.id.nama && auth.name) { st.id.nama = auth.name; save(); }
+    lastPts = points(); render();
+  } catch (e) { authError = "Login gagal dibaca. Coba lagi."; render(); }
+}
+function signOut() {
+  try { google.accounts.id.disableAutoSelect(); } catch (e) {}
+  auth = null; try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
+  st = fresh(); lastPts = 0; render();
+}
+let gisReady = false;
+function initGis() {
+  if (gisReady || !window.google || !google.accounts || !CFG.googleClientId) return;
+  google.accounts.id.initialize({ client_id: CFG.googleClientId, callback: onCredential, hd: DOMAIN || undefined, ux_mode: "popup", auto_select: false, itp_support: true });
+  gisReady = true;
+  if (!auth) render();
+}
+window.addEventListener("load", initGis);
+
+/* Drafts are kept per account so a shared device never mixes two people's answers. */
+const KEY_BASE = "ekspedisi9nilai.v1";
+const KEY = () => KEY_BASE + ":" + (auth ? auth.email : "anon");
+let st = load() || fresh();
+function fresh() { return { screen: "intro", id: { nama: "", grup: "", elemen: "", kelas: "" }, a: Array(9).fill(null), b: Array(B.length).fill(null), qi: 0, sent: false }; }
+function load() { try { const s = JSON.parse(localStorage.getItem(KEY())); return s && s.b && s.b.length === B.length ? s : null; } catch (e) { return null; } }
+function save() { try { localStorage.setItem(KEY(), JSON.stringify(st)); } catch (e) {} }
+
+const posItems = p => B.map((x, i) => x[0] === p ? i : -1).filter(i => i >= 0);
+const posDone = p => posItems(p).every(i => st.b[i] !== null);
+const aDone = () => st.a.every(v => v !== null);
+const idDone = () => st.id.nama.trim() && st.id.grup && st.id.elemen && st.id.kelas;
+function points() {
+  // Points reward completion only, never the size of an answer.
+  let x = st.a.filter(v => v !== null).length * 5 + st.b.filter(v => v !== null).length * 10;
+  for (let p = 0; p < 9; p++) if (posDone(p)) x += 25;
+  return x;
+}
+const rankOf = x => RANKS.filter(r => x >= r[0]).pop()[1];
+
+/* ---------- Helpers ---------- */
+const $app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function insignia(p, got, cls = "") {
+  return `<div class="ins ${got ? "got" : ""} ${cls}" aria-hidden="true"><svg viewBox="0 0 56 56">
+    <path class="base" d="M28 2 L50 12 V30 C50 43 40 51 28 54 C16 51 6 43 6 30 V12 Z"/>
+    <path class="glyph" d="${VALUES[p].glyph}"/></svg></div>`;
+}
+let lastPts = 0;
+function chrome() {
+  const r = document.getElementById("route");
+  let h = "";
+  for (let p = 0; p < 9; p++) {
+    const on = st.screen === "q" && B[st.qi][0] === p;
+    h += `<span class="pin ${posDone(p) ? "done" : ""} ${on ? "on" : ""}" title="Pos ${p + 1}: ${esc(VALUES[p].name)}">${p + 1}</span>`;
+    if (p < 8) h += `<span class="seg ${posDone(p) ? "done" : ""}"></span>`;
+  }
+  r.innerHTML = h;
+  const x = points(), el = document.getElementById("xp");
+  el.innerHTML = `<b>${x}</b> poin`;
+  if (x > lastPts) { el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
+  lastPts = x;
+  document.getElementById("rank").textContent = rankOf(x);
+  const av = document.getElementById("avatar");
+  av.hidden = !auth;
+  if (auth) { av.textContent = (auth.name || auth.email).trim().charAt(0).toUpperCase(); av.setAttribute("aria-label", "Keluar dari " + auth.email); }
+  document.querySelector(".bar").classList.toggle("anon", !auth);
+}
+function toast(msg) {
+  const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+function go(screen, extra = {}) { Object.assign(st, extra, { screen }); save(); render(); window.scrollTo({ top: 0 }); }
+
+/* ---------- Screens ---------- */
+function render() {
+  chrome();
+  const f = auth ? (screens[st.screen] || screens.intro) : screens.login;
+  $app.innerHTML = f();
+  const focus = $app.querySelector("[data-autofocus]");
+  if (focus) focus.focus({ preventScroll: true });
+}
+
+const screens = {
+  login() {
+    setTimeout(() => {
+      const el = document.getElementById("gbtn");
+      if (el && gisReady) google.accounts.id.renderButton(el, { theme: "outline", size: "large", shape: "pill", text: "signin_with", locale: "id", width: Math.min(320, el.clientWidth || 320) });
+    }, 0);
+    return `<section class="card stack">
+      <span class="eyebrow">Tim Binkar · Senat P3MD</span>
+      <h1>Survei Pemetaan 9 Nilai</h1>
+      <p class="lede">Halo, rekan Serdik! Masuk dulu dengan akun Google P3MD-mu. Jawaban hanya bisa dikirim dari akun <b class="nowrap">@${esc(DOMAIN || "p3md.sbm-itb.ac.id")}</b>, jadi kita pastikan dari awal.</p>
+      ${CFG.googleClientId ? `<div class="gwrap"><div id="gbtn" class="gbtn"></div>${gisReady ? "" : `<p class="muted" style="font-size:14px">Memuat tombol masuk…</p>`}</div>`
+        : `<p class="status warn">Tombol masuk belum aktif: panitia belum mengisi Google Client ID di config.js.</p>`}
+      ${authError ? `<p class="err" role="alert">${esc(authError)}</p>` : ""}
+      <p class="muted" style="font-size:13.5px">Kami hanya membaca nama dan alamat email akunmu untuk memastikan kamu serdik P3MD. Tidak ada kata sandi yang dilihat atau disimpan.</p>
+    </section>`;
+  },
+
+  intro() {
+    const resume = st.a.some(v => v !== null) || st.b.some(v => v !== null);
+    const target = !idDone() ? "id" : !aDone() ? "a" : "map";
+    return `<section class="card stack">
+      <span class="eyebrow">Tim Binkar · Senat P3MD</span>
+      <h1>Survei Pemetaan 9 Nilai</h1>
+      <p class="lede">Halo, rekan Serdik! Lihat bagaimana 9 Nilai P3MD terwujud dalam keseharian kita. Lewati 9 pos, kumpulkan lencananya.</p>
+      <div class="facts-line"><span>71 pernyataan</span><span>± 8 menit</span><span>Tersimpan otomatis</span></div>
+      <ol class="steps">
+        <li>Identitas<small>Nama, grup, elemen, kelas</small></li>
+        <li>Cermin diri<small>9 nilai</small></li>
+        <li>9 Pos<small>62 pernyataan</small></li>
+        <li>Kirim<small>lewat Google Form</small></li>
+      </ol>
+      <div class="stack" style="gap:8px">
+        <button class="btn gold block" onclick="go('${resume ? target : "id"}')">${resume ? "Lanjutkan ekspedisi" : "Mulai ekspedisi"}</button>
+        ${resume ? `<button class="btn link" onclick="restart()">Mulai dari awal</button>` : ""}
+      </div>
+    </section>
+    <section class="card stack">
+      <span class="eyebrow">Sebelum berangkat</span>
+      <ul class="rules">
+        <li>Tidak ada jawaban benar atau salah. Jawablah sesuai yang benar-benar terjadi, bukan yang seharusnya terjadi.</li>
+        <li>Poin dan lencana dihitung dari jumlah pernyataan yang kamu isi, bukan dari besar angkanya. Angka 1 dan angka 5 bernilai sama.</li>
+        <li>Identitas hanya dipakai untuk merekap hasil per Grup dan Elemen. Data hanya untuk keperluan internal Senat.</li>
+      </ul>
+    </section>`;
+  },
+
+  id() {
+    const grp = (k, opts, lab) => `<div><span id="lb-${k}" style="font-weight:600;display:block;margin-bottom:6px">${lab} <span style="color:var(--brass)">*</span></span>
+      <div class="choices" role="radiogroup" aria-labelledby="lb-${k}">${opts.map(o =>
+        `<button type="button" class="choice" role="radio" id="${k}-${o}" aria-checked="${st.id[k] === o}" onclick="setId('${k}','${o}')">${o}</button>`).join("")}</div></div>`;
+    return `<section class="card stack">
+      <span class="eyebrow">Langkah 1 dari 4 · Identitas</span>
+      <h2>Siapa yang berangkat?</h2>
+      <div class="who"><span>Masuk sebagai <b>${esc(auth.email)}</b></span><button class="btn link" onclick="signOut()">Ganti akun</button></div>
+      <div><label class="f" for="nama">Nama <span class="req">*</span></label>
+        <input type="text" id="nama" autocomplete="name" value="${esc(st.id.nama)}" oninput="st.id.nama=this.value;save()" placeholder="Nama lengkap"></div>
+      ${grp("grup", ["1","2","3","4"], "Grup")}
+      ${grp("elemen", ["1","2","3"], "Elemen")}
+      ${grp("kelas", ["A","B","C","D","E","F","G","H"], "Kelas")}
+      <p class="err" id="iderr" hidden>Lengkapi nama, grup, elemen, dan kelas dulu.</p>
+      <div class="row end"><button class="btn alt" onclick="go('intro')">Kembali</button><button class="btn" onclick="idNext()">Lanjut</button></div>
+    </section>`;
+  },
+
+  a() {
+    const n = st.a.filter(v => v !== null).length;
+    const cur = st.a.findIndex(v => v === null);
+    return `<section class="card stack">
+      <span class="eyebrow">Langkah 2 dari 4 · Bagian A</span>
+      <h2>Cermin diri</h2>
+      <p class="muted">Seberapa jauh kamu sudah menerapkan setiap nilai dalam keseharianmu?</p>
+      <div class="legend"><span>1 · Sangat kurang</span><span>5 · Sangat maksimal</span></div>
+      <div>${VALUES.map((v, i) => `<div class="arow ${i === cur ? "cur" : ""}" id="arow${i}">
+        <h3><span>${String(i + 1).padStart(2, "0")}</span>${esc(v.name)}${st.a[i] !== null ? `<em class="ok">✓</em>` : ""}</h3>
+        <div class="scale" role="radiogroup" aria-label="${esc(v.name)}">${[1,2,3,4,5].map(k =>
+          `<button type="button" class="opt" role="radio" id="a${i}-${k}" aria-checked="${st.a[i] === k}" onclick="setA(${i},${k})"><span class="n">${k}</span></button>`).join("")}</div>
+      </div>`).join("")}</div>
+      <p class="err" id="aerr" hidden>Masih ada nilai yang belum kamu isi.</p>
+      <div class="dock"><span class="count">${n}/9 terisi</span>
+        <button class="btn link" onclick="go('id')">Kembali</button><button class="btn ${n === 9 ? "gold" : ""}" onclick="aNext()">Lanjut ke peta</button></div>
+    </section>`;
+  },
+
+  map() {
+    const done = [...Array(9).keys()].filter(posDone).length;
+    const next = st.b.findIndex(v => v === null);
+    const nowPos = next >= 0 ? B[next][0] : -1;
+    return `<section class="card stack">
+      <span class="eyebrow">Langkah 3 dari 4 · Bagian B</span>
+      <h2>${done === 9 ? "Semua pos tercapai" : done ? `${done} dari 9 pos tercapai` : "Sembilan pos menunggu"}</h2>
+      <p class="muted">Pos 1–5 menilai perilaku serdik di lingkungan P3MD. Pos 6–9 menilai dirimu sendiri.</p>
+      ${next >= 0 ? `<button class="btn gold block" onclick="go('q',{qi:${next}})">${done || st.b.some(v => v !== null) ? `Lanjut ke Pos ${nowPos + 1}` : "Berangkat ke Pos 1"}</button>`
+                  : `<button class="btn gold block" onclick="go('finish')">Lanjut ke pengiriman</button>`}
+      <ol class="route-list">${VALUES.map((v, p) => {
+        const items = posItems(p), filled = items.filter(i => st.b[i] !== null).length, d = filled === items.length;
+        return `<li><button class="stop ${p === nowPos ? "now" : ""}" onclick="openPos(${p})">${insignia(p, d)}
+          <div style="min-width:0"><div class="name">Pos ${p + 1} · ${esc(v.name)}</div>
+            <div class="sub">${d ? "<b>Selesai</b>" : `${filled}/${items.length} pernyataan`} · ${B[items[0]][1] === "self" ? "diri sendiri" : "serdik lain"}</div>
+            <div class="mini"><i style="width:${filled / items.length * 100}%"></i></div></div>
+          <span class="go" aria-hidden="true">›</span></button></li>`;
+      }).join("")}</ol>
+      <div class="row"><button class="btn link" onclick="go('a')">← Ubah cermin diri</button></div>
+    </section>`;
+  },
+
+  q() {
+    const i = st.qi, [p, persp, text, req] = B[i];
+    const items = posItems(p), k = items.indexOf(i);
+    const answered = st.b.filter(v => v !== null).length;
+    return `<section class="card stack qcard" aria-labelledby="stmt">
+      <div class="overall"><span>${answered}/${B.length}</span><div class="meter"><i style="width:${answered / B.length * 100}%"></i></div></div>
+      <div class="qhead"><div><span class="eyebrow">Pos ${p + 1} dari 9</span><div class="posname">${esc(VALUES[p].name)}</div></div>
+        <div class="dots" aria-label="Pernyataan ${k + 1} dari ${items.length}">${items.map((j, n) => `<span class="dot ${st.b[j] !== null ? "a" : ""} ${n === k ? "c" : ""}"></span>`).join("")}</div></div>
+      <div class="row"><span class="chip ${persp}">${persp === "self" ? "Tentang diri saya" : "Tentang serdik P3MDI"}</span>${req ? "" : `<span class="chip">Boleh dilewati</span>`}</div>
+      <p class="statement" id="stmt">${esc(text)}</p>
+      <div class="scale q-scale" role="radiogroup" aria-labelledby="stmt">${[1,2,3,4,5].map(v =>
+        `<button type="button" class="opt" role="radio" id="b${i}-${v}" aria-checked="${st.b[i] === v}" onclick="answer(${v})"><span class="n">${v}</span><span class="t">${AGREE[v - 1]}</span></button>`).join("")}</div>
+      <div class="qnav">
+        <button class="btn link" onclick="back()">← Sebelumnya</button>
+        <span class="kbd">Tombol 1–5</span>
+        ${req ? (st.b[i] !== null ? `<button class="btn link" onclick="advance()">Berikutnya →</button>` : `<button class="btn link" onclick="go('map')">Peta pos</button>`)
+              : `<button class="btn link" onclick="answer('${SKIP}')">Lewati →</button>`}
+      </div>
+    </section>`;
+  },
+
+  posdone() {
+    const p = st.lastPos, done = [...Array(9).keys()].filter(posDone).length;
+    const next = st.b.findIndex(v => v === null);
+    const breather = done === 5 ? `<p class="note">Lebih dari separuh jalan. Tarik napas sebentar; empat pos terakhir menilai dirimu sendiri.</p>` : "";
+    return `<section class="card stack center">
+      ${insignia(p, true, "big stamp")}
+      <span class="eyebrow">Pos ${p + 1} tercapai · +25 poin</span>
+      <h2>Lencana ${esc(VALUES[p].name)}</h2>
+      <p class="muted">${done} dari 9 lencana terkumpul.</p>
+      ${breather}
+      <div class="shelf" style="width:100%">${VALUES.map((_, j) => insignia(j, posDone(j))).join("")}</div>
+      ${next >= 0 ? `<button class="btn gold block" onclick="go('q',{qi:${next}})">Lanjut ke Pos ${B[next][0] + 1}</button>`
+                  : `<button class="btn gold block" onclick="go('finish')">Lanjut ke pengiriman</button>`}
+      <button class="btn link" onclick="go('map')">Lihat peta pos</button>
+    </section>`;
+  },
+
+  finish() {
+    const missPos = [...Array(9).keys()].filter(p => posItems(p).some(i => st.b[i] === null && B[i][3]));
+    const ok = idDone() && aDone() && !missPos.length;
+    const wired = FORM.publishedId && FORM.entries.length === 4 + 9 + B.length;
+    const tiles = [
+      `<button class="tile ${idDone() ? "" : "miss"}" onclick="go('id')"><b>Identitas</b>${idDone() ? `Grup ${st.id.grup} · Elemen ${st.id.elemen} · Kelas ${st.id.kelas}` : "Belum lengkap"}</button>`,
+      `<button class="tile ${aDone() ? "" : "miss"}" onclick="go('a')"><b>Cermin diri</b>${aDone() ? "Lengkap" : "Belum lengkap"}</button>`,
+      ...VALUES.map((v, p) => `<button class="tile ${missPos.includes(p) ? "miss" : ""}" onclick="openPos(${p})"><b>Pos ${p + 1}</b>${missPos.includes(p) ? "Belum lengkap" : esc(SHORT[p])}</button>`)
+    ].join("");
+    return `<section class="card stack">
+      <span class="eyebrow">Langkah 4 dari 4 · Kirim</span>
+      <h2>${ok ? `Siap dikirim, ${esc(st.id.nama.trim().split(" ")[0] || "Serdik")}` : "Hampir selesai"}</h2>
+      ${ok ? `<div class="status">✓ Semua 71 pernyataan sudah terisi · ${points()} poin · ${rankOf(points())}</div>`
+           : `<div class="status warn">Masih ada bagian yang belum lengkap. Ketuk kotak berwarna di bawah untuk melengkapinya.</div>`}
+      ${wired ? `<ol class="steps-mini">
+          <li>Tekan tombol di bawah. Google Form resmi terbuka dengan jawabanmu sudah terisi.</li>
+          <li>Pastikan form terbuka dengan akun <b>${esc(auth.email)}</b>. Kalau Google meminta, masuk dengan akun itu.</li>
+          <li>Tekan <b>Berikutnya</b> sampai halaman terakhir, lalu <b>Kirim</b>.</li></ol>
+        ${ok ? `<a class="btn gold block" href="${esc(prefillUrl())}" target="_blank" rel="noopener" onclick="markSent()">Buka & kirim di Google Form ↗</a>`
+             : `<button class="btn gold block" disabled>Buka & kirim di Google Form ↗</button>`}
+        <p class="muted" style="font-size:13.5px">Jawabanmu baru tercatat setelah tombol Kirim di Google Form ditekan.</p>`
+      : `<p class="muted">Pengiriman langsung belum dihubungkan. Salin jawabanmu dan kirimkan ke Tim Binkar.</p>
+        <textarea class="copy" id="copybox" readonly>${esc(tsv())}</textarea>
+        <button class="btn gold block" ${ok ? "" : "disabled"} onclick="copyAns()">Salin jawaban</button>`}
+      ${st.sent ? `<p class="note">Google Form sudah dibuka. Pastikan kamu menekan Kirim di sana.</p>` : ""}
+      <div class="tiles">${tiles}</div>
+    </section>
+    <section class="card stack center">
+      <span class="eyebrow">Cermin diri</span>
+      <p class="muted">Gambaran penilaian dirimu dari Bagian A. Hanya untuk refleksi, tidak menilai siapa pun.</p>
+      <div class="radar-box" style="width:100%">${radar()}</div>
+      <div class="shelf" style="width:100%">${VALUES.map((_, j) => insignia(j, posDone(j))).join("")}</div>
+      <button class="btn link" onclick="restart()">Hapus jawaban di perangkat ini</button>
+    </section>`;
+  }
+};
+
+/* ---------- Actions ---------- */
+function restart() {
+  const box = document.getElementById("app");
+  box.insertAdjacentHTML("afterbegin", `<section class="card stack" id="confirm"><b>Hapus semua jawaban di perangkat ini?</b>
+    <div class="row"><button class="btn" onclick="st=fresh();lastPts=0;go('intro')">Ya, hapus</button><button class="btn alt" onclick="document.getElementById('confirm').remove()">Batal</button></div></section>`);
+  window.scrollTo({ top: 0 });
+}
+function setId(k, v) { st.id[k] = v; save(); render(); document.getElementById(k + "-" + v).focus(); }
+function idNext() { if (idDone()) go(aDone() ? "map" : "a"); else document.getElementById("iderr").hidden = false; }
+function setA(i, v) {
+  const first = st.a[i] === null; st.a[i] = v; save(); render();
+  document.getElementById(`a${i}-${v}`).focus({ preventScroll: true });
+  if (first && aDone()) toast("Cermin diri lengkap · +45 poin");
+  else if (first) {
+    const n = st.a.findIndex(x => x === null);
+    const el = n >= 0 && document.getElementById("arow" + n);
+    if (el) el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+}
+function aNext() { if (aDone()) go("map"); else document.getElementById("aerr").hidden = false; }
+function openPos(p) { const it = posItems(p); const f = it.find(i => st.b[i] === null); go("q", { qi: f ?? it[0] }); }
+let busy = false;
+function answer(v) {
+  if (busy) return;
+  const i = st.qi, p = B[i][0], wasDone = posDone(p);
+  st.b[i] = v; save(); render();
+  busy = true;
+  setTimeout(() => {
+    busy = false;
+    if (!wasDone && posDone(p)) { go("posdone", { lastPos: p }); return; }
+    advance();
+  }, v === SKIP ? 0 : 260);
+}
+function advance() {
+  const i = st.qi, p = B[i][0], it = posItems(p);
+  const nextInPos = it.find(j => j > i && st.b[j] === null) ?? it.find(j => j > i);
+  if (nextInPos !== undefined) go("q", { qi: nextInPos });
+  else { const n = st.b.findIndex(v => v === null); n >= 0 ? go("q", { qi: n }) : go("finish"); }
+}
+function back() { if (st.qi > 0) go("q", { qi: st.qi - 1 }); else go("map"); }
+function markSent() { st.sent = true; save(); setTimeout(render, 300); }
+
+function answersRow() {
+  const val = v => v === null || v === SKIP ? "" : v;
+  return [st.id.nama.trim(), st.id.grup, st.id.elemen, st.id.kelas, ...st.a.map(val), ...st.b.map(val)];
+}
+function tsv() { return answersRow().join("\t"); }
+function prefillUrl() {
+  const q = answersRow().map((v, n) => v === "" ? "" : `&entry.${FORM.entries[n]}=${encodeURIComponent(v)}`).join("");
+  const acct = auth ? `&authuser=${encodeURIComponent(auth.email)}` : "";
+  return `https://docs.google.com/forms/d/e/${FORM.publishedId}/viewform?usp=pp_url${acct}${q}`;
+}
+function copyAns() {
+  const box = document.getElementById("copybox");
+  const fallback = () => { box.focus(); box.select(); toast("Teks sudah dipilih. Salin dengan Ctrl/Cmd + C"); };
+  try { navigator.clipboard.writeText(box.value).then(() => toast("Jawaban tersalin"), fallback); } catch (e) { fallback(); }
+}
+
+function radar() {
+  const W = 460, H = 330, cx = W / 2, cy = 165, R = 108, n = 9;
+  const pt = (k, r) => { const a = -Math.PI / 2 + k * 2 * Math.PI / n; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+  let g = "";
+  for (let l = 1; l <= 5; l++) g += `<polygon class="grid" points="${[...Array(n).keys()].map(k => pt(k, R * l / 5).join(",")).join(" ")}"/>`;
+  for (let k = 0; k < n; k++) { const [x, y] = pt(k, R); g += `<line class="grid" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/>`; }
+  const vals = st.a.map(v => v || 0);
+  const poly = vals.map((v, k) => pt(k, R * v / 5).join(",")).join(" ");
+  let labels = "";
+  VALUES.forEach((v, k) => {
+    const [x, y] = pt(k, R + 22), anchor = Math.abs(x - cx) < 10 ? "middle" : x > cx ? "start" : "end";
+    const short = SHORT[k];
+    labels += `<text x="${x}" y="${y + 4}" text-anchor="${anchor}">${esc(short)} · ${vals[k] || "-"}</text>`;
+  });
+  const dots = vals.map((v, k) => { const [x, y] = pt(k, R * v / 5); return `<circle class="pt" cx="${x}" cy="${y}" r="3.5"/>`; }).join("");
+  return `<svg class="radar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik radar penilaian diri 9 nilai">${g}<polygon class="area" points="${poly}"/>${dots}${labels}</svg>`;
+}
+
+/* keyboard: 1-5 answers, left arrow goes back */
+document.addEventListener("keydown", e => {
+  if (st.screen !== "q" || e.target.tagName === "INPUT" || e.metaKey || e.ctrlKey) return;
+  if (/^[1-5]$/.test(e.key)) answer(+e.key);
+  else if (e.key === "ArrowLeft") back();
+  else if (e.key === "ArrowRight" && st.b[st.qi] !== null) advance();
+});
+
+lastPts = points();
+render();
+</script>
+</body>
+</html>
