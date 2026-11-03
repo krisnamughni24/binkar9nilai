@@ -3,7 +3,7 @@ window.APP_CONFIG = {
   /* OAuth 2.0 Client ID (Web application) from Google Cloud Console.
      Looks like: 1234567890-abc123.apps.googleusercontent.com
      A Client ID is public by design. Never put a client secret here. */
-  googleClientId: "",
+  googleClientId: "1076661932959-vn578ee8sjpbjshvqumels22l05mcgba.apps.googleusercontent.com",
 
   /* Only Google accounts from this Workspace domain may continue. */
   allowedDomain: "p3md.sbm-itb.ac.id",
