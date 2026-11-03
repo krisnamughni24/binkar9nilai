@@ -448,9 +448,11 @@ const SKIP = "skip";
    read email / name / hosted domain and gate the UI on the allowed domain.
    This is a UX gate, not server-side verification: the Google Form's
    "Verified email" + "Restrict to organization" settings remain the real guard. */
+/* The sign-in is never persisted: every visit (including a reload) starts at the
+   sign-in screen. Drafts stay on the device per account, so nothing is lost. */
 const AUTH_KEY = "ekspedisi9nilai.auth";
-let auth = loadAuth();
-function loadAuth() { try { const a = JSON.parse(localStorage.getItem(AUTH_KEY)); return a && a.email ? a : null; } catch (e) { return null; } }
+let auth = null;
+try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
 function decodeJwt(t) {
   const p = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
   const json = decodeURIComponent(atob(p).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
@@ -473,7 +475,6 @@ function onCredential(resp) {
     }
     const resuming = sendState.reauth;
     auth = { email, name: c.name || "", token: resp.credential, exp: (Number(c.exp) || 0) * 1000 };
-    try { localStorage.setItem(AUTH_KEY, JSON.stringify(auth)); } catch (e) {}
     authError = "";
     if (resuming) { sendState = { busy: false, reauth: false, error: "" }; submitAnswers(); return; }
     st = load() || fresh();
@@ -485,7 +486,7 @@ function onCredential(resp) {
 }
 function signOut() {
   try { google.accounts.id.disableAutoSelect(); } catch (e) {}
-  auth = null; try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
+  auth = null;
   st = fresh(); lastPts = 0; render();
 }
 let gisReady = false;
@@ -493,6 +494,7 @@ function initGis() {
   if (gisReady || !window.google || !google.accounts || !CFG.googleClientId) return;
   google.accounts.id.initialize({ client_id: CFG.googleClientId, callback: onCredential, hd: DOMAIN || undefined, ux_mode: "popup", auto_select: false, itp_support: true });
   gisReady = true;
+  try { google.accounts.id.disableAutoSelect(); } catch (e) {}
   if (!auth) render();
 }
 window.addEventListener("load", initGis);
