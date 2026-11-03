@@ -328,6 +328,15 @@ body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-event
 .select::after { content: ""; position: absolute; right: 16px; top: 50%; width: 8px; height: 8px; border-right: 2px solid var(--ink-2); border-bottom: 2px solid var(--ink-2);
   transform: translateY(-70%) rotate(45deg); pointer-events: none; }
 .select.ok select { border-color: var(--teal); background: var(--card); }
+.sent { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; padding: 16px; border-radius: 12px; background: var(--teal-soft); --geo-c: var(--teal); --geo-o: .1; }
+.sent-mark { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--teal); color: #fff; font-size: 22px; font-weight: 700; }
+.sent p { font-size: 14px; color: var(--ink-2); margin-top: 2px; }
+.score-big { display: flex; align-items: baseline; gap: 8px; font-family: var(--f-display); font-weight: 800; color: #fff; }
+.score-big b { font-size: 64px; line-height: 1; }
+.score-big span { font-size: 22px; text-transform: uppercase; letter-spacing: .06em; color: #F6E3B8; }
+.reveal { animation: rise .6s ease both; }
+.reveal .band { align-self: stretch; }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 <script src="config.js"></script>
@@ -458,9 +467,15 @@ function onCredential(resp) {
       google.accounts.id.disableAutoSelect();
       render(); return;
     }
-    auth = { email, name: c.name || "" };
+    if (sendState.reauth && auth && auth.email !== email) {
+      sendState = { busy: false, reauth: true, error: `Masuk dengan akun yang sama (${auth.email}) untuk mengirim.` };
+      render(); return;
+    }
+    const resuming = sendState.reauth;
+    auth = { email, name: c.name || "", token: resp.credential, exp: (Number(c.exp) || 0) * 1000 };
     try { localStorage.setItem(AUTH_KEY, JSON.stringify(auth)); } catch (e) {}
     authError = "";
+    if (resuming) { sendState = { busy: false, reauth: false, error: "" }; submitAnswers(); return; }
     st = load() || fresh();
     if (!st.id.nama && auth.name) { st.id.nama = auth.name; save(); }
     lastPts = points(); render();
@@ -519,6 +534,8 @@ function chrome() {
   }
   r.innerHTML = h;
   const x = points(), el = document.getElementById("xp");
+  const shown = revealed();
+  el.hidden = !shown; document.getElementById("rank").hidden = !shown;
   el.innerHTML = `<b>${x}</b> poin`;
   if (x > lastPts) { el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
   lastPts = x;
@@ -583,7 +600,7 @@ const screens = {
       <span class="eyebrow">Sebelum berangkat</span>
       <ul class="rules">
         <li>Tidak ada jawaban benar atau salah. Jawablah sesuai yang benar-benar terjadi, bukan yang seharusnya terjadi.</li>
-        <li>Poin dan lencana dihitung dari jumlah pernyataan yang kamu isi, bukan dari besar angkanya. Angka 1 dan angka 5 bernilai sama.</li>
+        <li>Kumpulkan lencana di setiap pos. Poin dan pangkatmu, beserta cermin diri, terbuka setelah jawaban terkirim. Poin dihitung dari jumlah pernyataan yang diisi, bukan dari besar angkanya.</li>
         <li>Identitas hanya dipakai untuk merekap hasil per Grup dan Elemen. Data hanya untuk keperluan internal Senat.</li>
       </ul>
     </section>`;
@@ -679,7 +696,7 @@ const screens = {
     const breather = done === 5 ? `<p class="note">Lebih dari separuh jalan. Tarik napas sebentar; empat pos terakhir menilai dirimu sendiri.</p>` : "";
     return `<section class="card stack center">
       <div class="stamp-wrap geo">${insignia(p, true, "big stamp")}</div>
-      <span class="eyebrow">Pos ${p + 1} tercapai · +25 poin</span>
+      <span class="eyebrow">Pos ${p + 1} tercapai</span>
       <h2>Lencana ${esc(VALUES[p].name)}</h2>
       <p class="muted">${done} dari 9 lencana terkumpul.</p>
       ${breather}
@@ -701,33 +718,105 @@ const screens = {
     ].join("");
     return `<section class="card stack">
       <div class="band geo"><span class="eyebrow">Langkah 4 dari 4 · Kirim</span>
-      <h2>${ok ? `Siap dikirim, ${esc(st.id.nama.trim().split(" ")[0] || "Serdik")}` : "Hampir selesai"}</h2></div>
-      ${ok ? `<div class="status">✓ Semua 71 pernyataan sudah terisi · ${points()} poin · ${rankOf(points())}</div>`
+      <h2>${isSent() && CFG.submitUrl ? `Terkirim, ${esc(st.id.nama.trim().split(" ")[0] || "Serdik")}` : ok ? `Siap dikirim, ${esc(st.id.nama.trim().split(" ")[0] || "Serdik")}` : "Hampir selesai"}</h2></div>
+      ${ok ? `<div class="status">✓ Semua 71 pernyataan sudah terisi</div>`
            : `<div class="status warn">Masih ada bagian yang belum lengkap. Ketuk kotak berwarna di bawah untuk melengkapinya.</div>`}
-      ${wired ? `<ol class="steps-mini">
-          <li>Tekan tombol di bawah. Google Form resmi terbuka dengan jawabanmu sudah terisi.</li>
-          <li>Pastikan form terbuka dengan akun <b>${esc(auth.email)}</b>. Kalau Google meminta, masuk dengan akun itu.</li>
-          <li>Tekan <b>Berikutnya</b> sampai halaman terakhir, lalu <b>Kirim</b>.</li></ol>
-        ${ok ? `<a class="btn gold block" href="${esc(prefillUrl())}" target="_blank" rel="noopener" onclick="markSent()">Buka & kirim di Google Form ↗</a>`
-             : `<button class="btn gold block" disabled>Buka & kirim di Google Form ↗</button>`}
-        <p class="muted" style="font-size:13.5px">Jawabanmu baru tercatat setelah tombol Kirim di Google Form ditekan.</p>`
-      : `<p class="muted">Pengiriman langsung belum dihubungkan. Salin jawabanmu dan kirimkan ke Tim Binkar.</p>
-        <textarea class="copy" id="copybox" readonly>${esc(tsv())}</textarea>
-        <button class="btn gold block" ${ok ? "" : "disabled"} onclick="copyAns()">Salin jawaban</button>`}
-      ${st.sent ? `<p class="note">Google Form sudah dibuka. Pastikan kamu menekan Kirim di sana.</p>` : ""}
+      ${CFG.submitUrl ? sendBlock(ok) : legacyBlock(ok, wired)}
       <div class="tiles">${tiles}</div>
     </section>
-    <section class="card stack center">
+    ${revealed() ? `<section class="card stack center reveal" id="reveal">
+      <div class="band geo" style="align-items:center;text-align:center"><span class="eyebrow">Ekspedisi selesai</span>
+        <div class="score-big"><b>${points()}</b><span>poin</span></div><h2>${rankOf(points())}</h2></div>
       <span class="eyebrow">Cermin diri</span>
       <p class="muted">Bandingkan penilaian dirimu di Bagian A dengan rata-rata jawabanmu di setiap pos. Pos 1–5 berisi pandanganmu tentang serdik lain, pos 6–9 tentang dirimu sendiri. Hanya untuk refleksi, tidak menilai siapa pun.</p>
       <div class="radar-box" style="width:100%">${radar()}</div>
       <div class="shelf" style="width:100%">${VALUES.map((_, j) => insignia(j, posDone(j))).join("")}</div>
       <button class="btn link" onclick="restart()">Hapus jawaban di perangkat ini</button>
-    </section>`;
+    </section>` : ""}`;
   }
 };
 
+
+/* ---------- Sending ---------- */
+let sendState = { busy: false, reauth: false, error: "" };
+const isSent = () => !!st.sentAt;
+/* Points, rank and the reflection radar stay hidden until the answers are sent. */
+function revealed() { return !!st.sentAt || (!CFG.submitUrl && !!st.sent); }
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleString("id-ID", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }); } catch (e) { return iso; }
+}
+function sendBlock(ok) {
+  if (isSent() && !sendState.busy && !sendState.reauth) {
+    return `<div class="sent geo"><div class="sent-mark" aria-hidden="true">✓</div>
+        <div><b>Jawabanmu sudah terkirim</b><p>${st.sentUpdated ? "Diperbarui" : "Tercatat"} pada ${esc(fmtTime(st.sentAt))} atas nama ${esc(auth.email)}. Terima kasih sudah menyelesaikan ekspedisi!</p></div></div>
+      ${sendState.error ? `<p class="err" role="alert">${esc(sendState.error)}</p>` : ""}
+      <button class="btn link" onclick="submitAnswers()">Ada yang salah? Ubah jawaban lewat kotak di bawah lalu kirim ulang</button>`;
+  }
+  if (sendState.reauth) {
+    setTimeout(() => {
+      const el = document.getElementById("gbtn2");
+      if (el && gisReady) google.accounts.id.renderButton(el, { theme: "filled_blue", size: "large", shape: "pill", text: "continue_with", locale: "id", width: Math.min(320, el.clientWidth || 320) });
+    }, 0);
+    return `<p class="status warn">Sesi login sudah lewat satu jam. Konfirmasi akun <b>${esc(auth.email)}</b> sekali lagi, lalu jawabanmu langsung terkirim.</p>
+      <div class="gwrap"><div id="gbtn2" class="gbtn"></div></div>
+      ${sendState.error ? `<p class="err" role="alert">${esc(sendState.error)}</p>` : ""}`;
+  }
+  return `<p class="muted">Jawaban dikirim langsung atas nama <b>${esc(auth.email)}</b>. Poin, pangkat, dan cermin dirimu muncul setelah terkirim.</p>
+    <button class="btn gold block" id="sendbtn" ${ok && !sendState.busy ? "" : "disabled"} onclick="submitAnswers()">${sendState.busy ? "Mengirim…" : "Kirim jawaban"}</button>
+    ${sendState.error ? `<p class="err" role="alert">${esc(sendState.error)}</p>` : ""}`;
+}
+async function submitAnswers() {
+  if (sendState.busy) return;
+  if (!auth || !auth.token || !auth.exp || auth.exp - Date.now() < 2 * 60 * 1000) {
+    sendState = { busy: false, reauth: true, error: "" }; render(); return;
+  }
+  sendState = { busy: true, reauth: false, error: "" }; render();
+  const num = v => (v === null || v === SKIP) ? "" : v;
+  const payload = { action: "submit", idToken: auth.token, nama: st.id.nama.trim(), grup: st.id.grup, elemen: st.id.elemen, kelas: st.id.kelas,
+    a: st.a.map(num), b: st.b.map(num) };
+  try {
+    // text/plain keeps this a "simple" request, so Apps Script needs no CORS preflight.
+    const res = await fetch(CFG.submitUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload), redirect: "follow" });
+    const out = await res.json();
+    if (out.ok) {
+      const first = !st.sentAt;
+      st.sentAt = out.at; st.sentUpdated = !!out.updated; save();
+      sendState = { busy: false, reauth: false, error: "" };
+      render();
+      toast(out.updated ? "Jawaban diperbarui" : "Jawaban terkirim");
+      if (first) celebrate();
+      return;
+    } else if (out.error === "token_invalid" || out.error === "no_token") {
+      sendState = { busy: false, reauth: true, error: "" };
+    } else {
+      sendState = { busy: false, reauth: false, error: out.message || "Pengiriman gagal. Coba lagi." };
+    }
+  } catch (e) {
+    sendState = { busy: false, reauth: false, error: "Tidak bisa terhubung ke server. Periksa koneksi internet lalu tekan Kirim jawaban lagi." };
+  }
+  render();
+}
+/* Reveal animation for points and the reflection card after the first successful send. */
+function celebrate() {
+  const xp = document.getElementById("xp");
+  if (xp) { xp.classList.remove("pop"); void xp.offsetWidth; xp.classList.add("pop"); }
+  const card = document.getElementById("reveal");
+  if (card) card.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}
+
 /* ---------- Actions ---------- */
+function legacyBlock(ok, wired) {
+  if (wired) return `<ol class="steps-mini">
+      <li>Tekan tombol di bawah. Google Form resmi terbuka dengan jawabanmu sudah terisi.</li>
+      <li>Pastikan form terbuka dengan akun <b>${esc(auth.email)}</b>. Kalau Google meminta, masuk dengan akun itu.</li>
+      <li>Tekan <b>Berikutnya</b> sampai halaman terakhir, lalu <b>Kirim</b>.</li></ol>
+    ${ok ? `<a class="btn gold block" href="${esc(prefillUrl())}" target="_blank" rel="noopener" onclick="markSent()">Buka & kirim di Google Form ↗</a>`
+         : `<button class="btn gold block" disabled>Buka & kirim di Google Form ↗</button>`}
+    ${st.sent ? `<p class="note">Google Form sudah dibuka. Pastikan kamu menekan Kirim di sana.</p>` : ""}`;
+  return `<p class="muted">Pengiriman langsung belum dihubungkan. Salin jawabanmu dan kirimkan ke Tim Binkar.</p>
+    <textarea class="copy" id="copybox" readonly>${esc(tsv())}</textarea>
+    <button class="btn gold block" ${ok ? "" : "disabled"} onclick="copyAns()">Salin jawaban</button>`;
+}
 function restart() {
   const box = document.getElementById("app");
   box.insertAdjacentHTML("afterbegin", `<section class="card stack" id="confirm"><b>Hapus semua jawaban di perangkat ini?</b>
@@ -739,7 +828,7 @@ function idNext() { if (idDone()) go(aDone() ? "map" : "a"); else document.getEl
 function setA(i, v) {
   const first = st.a[i] === null; st.a[i] = v; save(); render();
   document.getElementById(`a${i}-${v}`).focus({ preventScroll: true });
-  if (first && aDone()) toast("Cermin diri lengkap · +45 poin");
+  if (first && aDone()) toast("Cermin diri lengkap");
   else if (first) {
     const n = st.a.findIndex(x => x === null);
     const el = n >= 0 && document.getElementById("arow" + n);

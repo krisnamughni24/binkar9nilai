@@ -5,6 +5,10 @@ window.APP_CONFIG = {
      A Client ID is public by design. Never put a client secret here. */
   googleClientId: "1076661932959-vn578ee8sjpbjshvqumels22l05mcgba.apps.googleusercontent.com",
 
+  /* Web app URL of the Apps Script receiver (apps-script/Code.gs), ends with /exec.
+     When set, answers are sent with one click and the Google Form fallback is not used. */
+  submitUrl: "",
+
   /* Only Google accounts from this Workspace domain may continue. */
   allowedDomain: "p3md.sbm-itb.ac.id",
 

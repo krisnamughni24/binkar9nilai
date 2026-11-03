@@ -76,6 +76,45 @@ signature on a server.
 3. Do **not** press Submit during the test (it would use up your one response).
    If you do, ask the form owner to delete that response.
 
+## One-click submission (Apps Script receiver)
+
+When `config.js → submitUrl` is set, the final step shows a single
+**Kirim jawaban** button. Answers go straight to a Google Sheet through
+`apps-script/Code.gs`; the Google Form is no longer opened.
+
+How identity stays trustworthy: the browser sends the Google ID token from
+sign-in, and the script verifies it with Google (`oauth2.googleapis.com/tokeninfo`)
+before writing: audience must equal our Client ID, email must be verified,
+domain must be `p3md.sbm-itb.ac.id`, token must not be expired. One row per
+email; sending again updates that row and increments "Jumlah kirim".
+ID tokens last one hour, so a serdik who returns later is asked to confirm the
+Google account once before sending.
+
+Points, rank and the reflection radar stay hidden until the answers are sent.
+
+### Setup
+
+1. Create a Google Sheet, e.g. **Hasil Survei 9 Nilai P3MD** (any Google account).
+2. In the sheet: **Extensions → Apps Script**. Replace the default code with
+   `apps-script/Code.gs`. Check that `CLIENT_ID` matches `config.js`.
+3. Select the `setup` function and press **Run** once. Approve the permissions
+   (on the "Google hasn't verified this app" screen: *Advanced → Go to … (unsafe)*;
+   it is your own script). A sheet named **Jawaban** with 79 header columns appears.
+4. **Deploy → New deployment →** type **Web app**.
+   - Execute as: **Me**
+   - Who has access: **Anyone**
+   Press **Deploy** and copy the **Web app URL** (ends with `/exec`).
+5. Put that URL in `config.js → submitUrl`, commit and push.
+6. Share the sheet with Tim Binkar (Viewer or Editor).
+
+When `Code.gs` changes later, use **Deploy → Manage deployments → Edit →
+Version: New version** so the `/exec` URL stays the same.
+
+Sheet columns: Waktu kirim, Email, Nama, Grup, Elemen, Kelas, A1–A9, B1–B62,
+Terakhir diperbarui, Jumlah kirim. Optional items B8 and B10 may be empty.
+Scoring notes for analysis: B38, B45, B55, B57 are reverse-worded;
+B20, B30, B39, B62 are validity (social-desirability) checks.
+
 ## Local development
 
 ```bash
