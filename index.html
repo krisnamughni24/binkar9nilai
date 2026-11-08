@@ -15,7 +15,7 @@ img { max-width: 100%; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
-/* Layout: a field-expedition route. Sticky status strip (route pins + points), one focused card per screen, map-paper ground. */
+/* Layout: a field-expedition route. Sticky status strip (route pins + badges), one focused card per screen, map-paper ground. */
 :root {
   --paper: #ECEFE8;
   --paper-2: #E2E7DD;
@@ -392,7 +392,7 @@ body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-event
   <div class="bar-in">
     <div class="brand">9 Nilai<small>Ekspedisi P3MD</small></div>
     <div class="route" id="route" aria-label="Kemajuan pos"></div>
-    <div class="score"><span class="xp" id="xp" aria-live="polite"><b>0</b> poin</span><span class="rank" id="rank">Kadet</span><button class="avatar" id="avatar" hidden onclick="signOut()" title="Keluar"></button></div>
+    <div class="score"><button class="avatar" id="avatar" hidden onclick="signOut()" title="Keluar"></button></div>
   </div>
 </header>
 <main><div class="wrap" id="app"></div></main>
@@ -476,7 +476,6 @@ const SOFT = [
 const softLabel = k => `${SOFT[k].en} (${SOFT[k].id})`;
 const LEVEL5 = ["Belum berkembang", "Mulai berkembang", "Cukup berkembang", "Berkembang dengan baik", "Sangat berkembang"];
 const LEVEL5_HINT = ["Masih sangat perlu ditingkatkan", "Punya kemampuan dasar, masih perlu banyak pengembangan", "Sudah cukup, tetapi penerapannya belum konsisten", "Mampu menerapkan secara baik dan konsisten", "Menguasai dengan sangat baik, jadi keunggulan diri"];
-const RANKS = [[0, "Kadet"], [120, "Pratama"], [260, "Madya"], [410, "Utama"], [550, "Paripurna"]];
 
 /* ---------- Auth ----------
    Google Identity Services gives us an ID token in the browser. The receiver
@@ -513,14 +512,14 @@ function onCredential(resp) {
     st = load() || fresh();
     st.screen = "intro";
     if (!st.id.nama && auth.name) { st.id.nama = auth.name; save(); }
-    lastPts = points(); render();
+    render();
     checkStatus();
   } catch (e) { authError = "Login gagal dibaca. Coba lagi."; render(); }
 }
 function signOut() {
   try { google.accounts.id.disableAutoSelect(); } catch (e) {}
   auth = null;
-  st = fresh(); lastPts = 0; render();
+  st = fresh(); render();
 }
 let gisReady = false;
 function initGis() {
@@ -559,15 +558,6 @@ const softAnswered = () => st.s.filter(v => v !== null).length + (picksDone() ? 
 const softDots = cur => `<div class="dots" aria-hidden="true">${[...Array(11).keys()].map(j => `<span class="dot ${(j < 10 ? st.s[j] !== null : picksDone()) ? "a" : ""} ${j === cur ? "c" : ""}"></span>`).join("")}</div>`;
 const idDone = () => !!(st.id.nama.trim() && st.id.grup && st.id.elemen && st.id.kelas);
 const allDone = () => idDone() && nDone() && softDone();
-function points() {
-  // Points reward completion only, never the size of an answer.
-  let x = st.n.filter(v => v !== null).length * 10 + st.s.filter(v => v !== null).length * 10;
-  for (let p = 0; p < NPOS; p++) if (posDone(p)) x += 50;
-  if (picksDone()) x += 30;
-  if (softDone()) x += 25;
-  return x;
-}
-const rankOf = x => RANKS.filter(r => x >= r[0]).pop()[1];
 
 /* ---------- Helpers ---------- */
 const $app = document.getElementById("app");
@@ -583,7 +573,6 @@ function insignia(p, got, cls = "") {
 }
 const shelf = () => `<div class="shelf four">${[...Array(NPOS + 1).keys()].map(j => insignia(j, posDone(j))).join("")}</div>`;
 const badgeName = p => p === SOFT_POS ? "Soft Skill" : POS[p].name;
-let lastPts = 0;
 function chrome() {
   const r = document.getElementById("route");
   const softOn = ["softintro", "soft", "picks"].includes(st.screen);
@@ -595,13 +584,6 @@ function chrome() {
     if (p < SOFT_POS) h += `<span class="seg ${posDone(p) ? "done" : ""}"></span>`;
   }
   r.innerHTML = h;
-  const x = points(), el = document.getElementById("xp");
-  const shown = revealed();
-  el.hidden = !shown; document.getElementById("rank").hidden = !shown;
-  el.innerHTML = `<b>${x}</b> poin`;
-  if (x > lastPts && shown) { el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
-  lastPts = x;
-  document.getElementById("rank").textContent = rankOf(x);
   const av = document.getElementById("avatar");
   av.hidden = !auth;
   if (auth) { av.textContent = (auth.name || auth.email).trim().charAt(0).toUpperCase(); av.setAttribute("aria-label", "Keluar dari " + auth.email); }
@@ -684,7 +666,7 @@ const screens = {
         <li>Tidak ada jawaban benar atau salah. Jawablah sesuai yang benar-benar terjadi, bukan yang seharusnya terjadi.</li>
         <li>Data identitas dipakai untuk merekap hasil per Grup dan Elemen, serta memetakan kebutuhan pengembangan soft skill tiap personil. Data hanya untuk keperluan internal Senat.</li>
         <li>Pengumpulan data ini murni untuk riset 9 Nilai di lingkungan P3MD, bukan penilaian individu. Hasil risetnya akan disampaikan secara transparan.</li>
-        <li>Poin, pangkat, dan profilmu terbuka setelah jawaban terkirim. Poin dihitung dari jumlah yang diisi, bukan dari besar angkanya.</li>
+        <li>Kumpulkan lencana di setiap pos. Profil soft skill dan ringkasan jawabanmu terbuka setelah jawaban terkirim.</li>
       </ul>
     </section>`;
   },
@@ -842,10 +824,10 @@ const screens = {
       ${locked() ? "" : `<div class="tiles">${tiles}</div>`}
     </section>
     ${revealed() ? `<section class="card stack center reveal" id="reveal">
-      <div class="band geo" style="align-items:center;text-align:center"><span class="eyebrow">Ekspedisi selesai</span>
-        <div class="score-big"><b>${points()}</b><span>poin</span></div><h2>${rankOf(points())}</h2></div>
+      <div class="band geo" style="align-items:center;text-align:center"><span class="eyebrow">Terima kasih sudah berpartisipasi</span>
+        <h2>Ekspedisi tuntas</h2><div class="score-big"><b>4/4</b><span>lencana</span></div></div>
       <span class="eyebrow">Profil soft skill-mu</span>
-      <p class="muted">Penilaian dirimu sendiri untuk 10 soft skill. Tiga yang ingin kamu kembangkan ditandai tembaga.</p>
+      <p class="muted">Angka di tiap label adalah penilaianmu sendiri di S1–S10 (1 = belum berkembang, 5 = sangat berkembang). Tiga soft skill yang ingin kamu kembangkan ditandai tembaga.</p>
       <div class="radar-box" style="width:100%">${softRadar()}</div>
       <div class="chips-row">${st.picks.map(k => `<span class="chip gold-chip">${esc(SOFT[k].en)}</span>`).join("")}</div>
     </section>
@@ -860,7 +842,7 @@ const screens = {
 
 /* ---------- Results visuals ---------- */
 function softRadar() {
-  const W = 480, H = 350, cx = W / 2, cy = 175, R = 112, n = 10;
+  const W = 540, H = 350, cx = W / 2, cy = 175, R = 108, n = 10;
   const pt = (k, r) => { const a = -Math.PI / 2 + k * 2 * Math.PI / n; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
   let g = "";
   for (let l = 1; l <= 5; l++) g += `<polygon class="grid" points="${[...Array(n).keys()].map(k => pt(k, R * l / 5).join(",")).join(" ")}"/>`;
@@ -872,7 +854,7 @@ function softRadar() {
   SOFT.forEach((sk, k) => {
     const [x, y] = pt(k, R + 20), anchor = Math.abs(x - cx) < 10 ? "middle" : x > cx ? "start" : "end";
     const picked = st.picks.includes(k);
-    labels += `<text x="${x}" y="${y + 4}" text-anchor="${anchor}" class="${picked ? "lab-pick" : "lab"}">${esc(sk.short)} · ${vals[k] || "-"}</text>`;
+    labels += `<text x="${x}" y="${y + 4}" text-anchor="${anchor}" class="${picked ? "lab-pick" : "lab"}">${esc(sk.short)} · ${vals[k] || "-"}/5</text>`;
   });
   return `<svg class="radar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik radar penilaian diri 10 soft skill">${g}${poly}${dots}${labels}</svg>`;
 }
@@ -890,7 +872,7 @@ function valueBars() {
 /* ---------- Sending ---------- */
 let sendState = { busy: false, reauth: false, error: "" };
 const isSent = () => !!st.sentAt;
-/* Points, rank and the profile stay hidden until the answers are sent. */
+/* The profile and summary stay hidden until the answers are sent. */
 function revealed() { return !!st.sentAt || (!CFG.submitUrl && !!st.sent); }
 function fmtTime(iso) {
   try { return new Date(iso).toLocaleString("id-ID", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }); } catch (e) { return iso; }
@@ -910,7 +892,7 @@ function sendBlock(ok) {
       <div class="gwrap"><div id="gbtn2" class="gbtn"></div></div>
       ${sendState.error ? `<p class="err" role="alert">${esc(sendState.error)}</p>` : ""}`;
   }
-  return `<p class="muted">Jawaban dikirim langsung atas nama <b>${esc(auth.email)}</b>. Poin, pangkat, dan profilmu muncul setelah terkirim.</p>
+  return `<p class="muted">Jawaban dikirim langsung atas nama <b>${esc(auth.email)}</b>. Profil soft skill-mu muncul setelah terkirim.</p>
     <button class="btn gold block" id="sendbtn" ${ok && !sendState.busy ? "" : "disabled"} onclick="submitAnswers()">${sendState.busy ? "Mengirim…" : "Kirim jawaban"}</button>
     ${sendState.error ? `<p class="err" role="alert">${esc(sendState.error)}</p>` : ""}`;
 }
@@ -936,12 +918,12 @@ async function checkStatus() {
     checking = false;
     if (out.ok && out.submitted) {
       const wasLocal = !!st.sentAt;
-      applyServerRecord(out); lastPts = points(); render();
+      applyServerRecord(out); render();
       if (!wasLocal) toast("Kamu sudah pernah mengirim jawaban");
     } else if (out.ok && out.submitted === false && st.sentAt) {
       // The row was deleted in the sheet: unlock so this serdik can send again.
       st.sentAt = null; st.screen = "intro"; save();
-      lastPts = points(); render();
+      render();
       toast("Jawabanmu bisa dikirim ulang");
     } else render();
   } catch (e) { /* offline or slow: the receiver still rejects a second submission */ }
@@ -971,7 +953,7 @@ async function submitAnswers() {
     } else if (out.error === "already_submitted") {
       applyServerRecord(out);
       sendState = { busy: false, reauth: false, error: "" };
-      lastPts = points(); render();
+      render();
       toast("Akun ini sudah pernah mengirim jawaban");
       return;
     } else if (out.error === "token_invalid" || out.error === "no_token") {
@@ -984,10 +966,8 @@ async function submitAnswers() {
   }
   render();
 }
-/* Reveal animation for points and the profile after the first successful send. */
+/* Scroll to the revealed profile after the first successful send. */
 function celebrate() {
-  const xp = document.getElementById("xp");
-  if (xp) { xp.classList.remove("pop"); void xp.offsetWidth; xp.classList.add("pop"); }
   const card = document.getElementById("reveal");
   if (card) card.scrollIntoView({ behavior: reduce() ? "auto" : "smooth", block: "start" });
 }
@@ -1029,7 +1009,7 @@ function copyAns() {
 function restart() {
   const box = document.getElementById("app");
   box.insertAdjacentHTML("afterbegin", `<section class="card stack" id="confirm"><b>Hapus semua jawaban di perangkat ini?</b>
-    <div class="row"><button class="btn" onclick="st=fresh();lastPts=0;go('intro')">Ya, hapus</button><button class="btn alt" onclick="document.getElementById('confirm').remove()">Batal</button></div></section>`);
+    <div class="row"><button class="btn" onclick="st=fresh();go('intro')">Ya, hapus</button><button class="btn alt" onclick="document.getElementById('confirm').remove()">Batal</button></div></section>`);
   window.scrollTo({ top: 0 });
 }
 function setId(k, v) { st.id[k] = v; save(); render(); const el = document.getElementById(k); if (el) el.focus({ preventScroll: true }); }
@@ -1097,7 +1077,6 @@ document.addEventListener("keydown", e => {
   }
 });
 
-lastPts = points();
 render();
 checkStatus();
 </script>

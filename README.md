@@ -92,7 +92,7 @@ answers are returned, so the site shows them read-only on any device.
 ID tokens last one hour, so a serdik who returns later is asked to confirm the
 Google account once before sending.
 
-Points, rank and the reflection radar stay hidden until the answers are sent.
+The soft-skill profile and the 9 Nilai summary stay hidden until the answers are sent.
 After sign-in the site asks the receiver (`action: "status"`) whether the
 account already submitted; if so, it jumps straight to the locked results.
 
@@ -158,5 +158,5 @@ Google sign-in does not work from `file://`; serve the folder over HTTP and add
 - **Drafts** are stored in the browser's `localStorage`, keyed by the signed-in
   email, so two people on one device never share answers. "Ganti akun" signs out
   and shows a fresh draft for the next person.
-- Points and badges count answered items only, never the value of an answer,
-  so the gamification does not push answers up or down.
+- Badges count completed checkpoints only, never the value of an answer,
+  so the gamification does not push answers up or down. There are no points.
