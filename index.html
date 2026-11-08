@@ -33,6 +33,7 @@ img { max-width: 100%; }
   --f-body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --r: 14px;
+  --copper: #B4622D;
   --geo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' fill='none' stroke='%23000' stroke-width='1.5'%3E%3Cellipse cx='12' cy='12' rx='4.5' ry='9' transform='rotate(-45 12 12)'/%3E%3Cellipse cx='28' cy='28' rx='4.5' ry='9' transform='rotate(-45 28 28)'/%3E%3Cellipse cx='28' cy='12' rx='4.5' ry='9' transform='rotate(45 28 12)'/%3E%3Cellipse cx='12' cy='28' rx='4.5' ry='9' transform='rotate(45 12 28)'/%3E%3Ccircle cx='20' cy='20' r='2.4'/%3E%3Ccircle cx='12' cy='12' r='1.2' fill='%23000'/%3E%3Ccircle cx='28' cy='28' r='1.2' fill='%23000'/%3E%3Ccircle cx='28' cy='12' r='1.2' fill='%23000'/%3E%3Ccircle cx='12' cy='28' r='1.2' fill='%23000'/%3E%3Ccircle cx='0' cy='0' r='2.4'/%3E%3Ccircle cx='40' cy='0' r='2.4'/%3E%3Ccircle cx='0' cy='40' r='2.4'/%3E%3Ccircle cx='40' cy='40' r='2.4'/%3E%3C/svg%3E");
   --geo-s: 40px;
   --parang: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' fill='none' stroke='%23000' stroke-width='1.5'%3E%3Cpath d='M0 40C8 36 6 28 14 26S20 16 26 14 36 4 40 0'/%3E%3Cpath d='M-20 40 20 0M20 40 40 20M0 20 20 0' stroke-width='1'/%3E%3Cpath d='M8 6 12 10 8 14 4 10Z M32 26 36 30 32 34 28 30Z' fill='%23000' stroke='none'/%3E%3C/svg%3E");
@@ -369,10 +370,10 @@ body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-event
 .pick:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .shelf.four { grid-template-columns: repeat(4, 1fr); width: 100%; max-width: 300px; margin-inline: auto; gap: 12px; }
 .chips-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-.chip.gold-chip { background: var(--brass); color: #fff; font-weight: 600; }
-.copper { color: var(--brass); font-weight: 700; }
-.radar .lab-pick { fill: var(--brass); font-weight: 700; }
-.radar .pick-pt { fill: var(--brass); stroke: #fff; stroke-width: 1.5; }
+.chip.gold-chip { background: var(--copper); color: #fff; font-weight: 600; }
+.copper { color: var(--copper); font-weight: 700; }
+.radar .lab-pick { fill: var(--copper); font-weight: 700; }
+.radar .pick-pt { fill: var(--copper); stroke: #fff; stroke-width: 1.5; }
 .bars { display: grid; gap: 8px; width: 100%; }
 .barrow { display: grid; grid-template-columns: 96px 1fr 36px; gap: 10px; align-items: center; font-size: 14px; }
 .barrow .bl { font-weight: 600; }
