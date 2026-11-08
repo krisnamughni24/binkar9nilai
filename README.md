@@ -1,14 +1,15 @@
 # Ekspedisi 9 Nilai P3MD
 
-A gamified front end for the **Survei Pemetaan 9 Nilai P3MD** Google Form.
-Serdik sign in with their `@p3md.sbm-itb.ac.id` Google account, answer the 71
-statements as a 9-checkpoint "expedition", and finish by opening the official
-Google Form with every answer pre-filled. The Google Form stays the single
-source of truth for responses.
+A gamified front end for the **Survei Pemetaan 9 Nilai P3MD** (Tim Binkar ×
+Risdikti × SDM, Senat P3MD). Serdik sign in with their `@p3md.sbm-itb.ac.id`
+Google account, rate 27 statements about Serdik P3MDI in general as a
+9-checkpoint "expedition", rate 10 soft skills about themselves, pick 3 to
+develop, and send everything with one click to a Google Sheet through an
+Apps Script receiver.
 
 ```
-Sign in with Google ─▶ Identity ─▶ Bagian A (9) ─▶ 9 Pos (62) ─▶ Pre-filled Google Form ─▶ Submit
-   (domain check)                                                  (authuser = signed-in email)
+Sign in ─▶ Identity ─▶ 9 Pos (27 × 1-4) ─▶ Soft skill (10 × 1-5) ─▶ Pick 3 ─▶ Kirim jawaban ─▶ Sheet "Jawaban v2"
+ (every visit)                                                                (token verified, one per email)
 ```
 
 ## Files
@@ -102,7 +103,7 @@ account already submitted; if so, it jumps straight to the locked results.
    `apps-script/Code.gs`. Check that `CLIENT_ID` matches `config.js`.
 3. Select the `setup` function and press **Run** once. Approve the permissions
    (on the "Google hasn't verified this app" screen: *Advanced → Go to … (unsafe)*;
-   it is your own script). A sheet named **Jawaban** with 79 header columns appears.
+   it is your own script). A tab named **Jawaban v2** with 46 header columns appears.
 4. **Deploy → New deployment →** type **Web app**.
    - Execute as: **Me**
    - Who has access: **Anyone**
@@ -113,10 +114,27 @@ account already submitted; if so, it jumps straight to the locked results.
 When `Code.gs` changes later, use **Deploy → Manage deployments → Edit →
 Version: New version** so the `/exec` URL stays the same.
 
-Sheet columns: Waktu kirim, Email, Nama, Grup, Elemen, Kelas, A1–A9, B1–B62,
-Terakhir diperbarui, Jumlah kirim. Optional items B8 and B10 may be empty.
-Scoring notes for analysis: B38, B45, B55, B57 are reverse-worded;
-B20, B30, B39, B62 are validity (social-desirability) checks.
+Sheet tab **Jawaban v2** (46 columns): Waktu kirim, Email, Nama, Grup, Elemen,
+Kelas, statements 1-27 (scale 1-4), S1-S10 (scale 1-5), S11 (the three chosen
+soft skills as "A, B, C", same format as a Google Forms checkbox),
+Terakhir diperbarui, Jumlah kirim.
+
+Instrument v2 and how the site groups it:
+
+| Statements | Value |
+|---|---|
+| 1-3 | Karakter dan Integritas |
+| 4-6 | Kepemimpinan |
+| 7-9 | Komunikasi dan Adaptabilitas |
+| 10-12 | Resiliensi Fisik dan Mental |
+| 13-15 | Analytical Thinking dan Problem Solving |
+| 16-18 | Manajemen dan Eksekusi |
+| 19-21 | Governance dan Etika Publik |
+| 22-24 | Nation Building dan Public Purpose |
+| 25-27 | Collaboration dan Stakeholder Leadership |
+
+Statements 1-27 describe Serdik P3MDI in general (not the respondent).
+S1-S10 are self-ratings. All items are required; S11 needs exactly 3.
 
 ## Local development
 

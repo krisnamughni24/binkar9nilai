@@ -1,5 +1,5 @@
 /**
- * Ekspedisi 9 Nilai P3MD: response receiver.
+ * Ekspedisi 9 Nilai P3MD: response receiver (instrument v2).
  *
  * Bind this script to the Google Sheet that should hold the answers
  * (Extensions -> Apps Script), then deploy it as a Web app:
@@ -11,16 +11,34 @@
  * not expired. One submission per email: a second submission is rejected
  * and the earlier answers are returned so the site can show them read-only.
  *
+ * Instrument v2:
+ *   1-27   statements about Serdik P3MDI in general, scale 1-4
+ *   S1-S10 soft-skill self-rating, scale 1-5
+ *   S11    exactly 3 soft skills to develop (stored like a Google Forms checkbox: "A, B, C")
+ *
  * No secrets live in this file. The Client ID is public by design.
  */
 
 const CLIENT_ID = "1076661932959-vn578ee8sjpbjshvqumels22l05mcgba.apps.googleusercontent.com";
 const ALLOWED_DOMAIN = "p3md.sbm-itb.ac.id";
-const SHEET_NAME = "Jawaban";
-const N_A = 9;
-const N_B = 62;
-/* 0-based Bagian B items that the form marks as optional. */
-const OPTIONAL_B = [7, 9];
+/* New tab for v2 so rows from the earlier 71-item version never mix with these. */
+const SHEET_NAME = "Jawaban v2";
+const N_N = 27;   // 9 Nilai statements, scale 1-4
+const N_S = 10;   // soft skills, scale 1-5
+const N_PICK = 3; // S11: pick exactly 3
+
+const SOFT_LABELS = [
+  "Emotional Intelligence (Kecerdasan Emosional)",
+  "Teamwork & Collaboration (Kerja Sama dan Kolaborasi)",
+  "Conflict Management (Manajemen Konflik)",
+  "Negotiation & Influencing (Negosiasi dan Mempengaruhi)",
+  "Creativity & Innovation (Kreativitas dan Inovasi)",
+  "Learning Agility (Kelincahan Belajar)",
+  "Coaching & Mentoring (Pembinaan dan Pendampingan)",
+  "Self-Awareness (Kesadaran Diri)",
+  "Empathy (Empati)",
+  "Feedback Management (Pengelolaan Umpan Balik)"
+];
 
 const HEADERS = [
   "Waktu kirim",
@@ -29,77 +47,44 @@ const HEADERS = [
   "Grup",
   "Elemen",
   "Kelas",
-  "A1. Penerapan nilai 1. Karakter dan Integritas",
-  "A2. Penerapan nilai 2. Kepemimpinan",
-  "A3. Penerapan nilai 3. Komunikasi dan Adaptabilitas",
-  "A4. Penerapan nilai 4. Resiliensi Fisik dan Mental",
-  "A5. Penerapan nilai 5. Analytical Thinking dan Problem Solving",
-  "A6. Penerapan nilai 6. Manajemen dan Eksekusi",
-  "A7. Penerapan nilai 7. Governance dan Etika Publik",
-  "A8. Penerapan nilai 8. Nation Building dan Public Purpose",
-  "A9. Penerapan nilai 9. Collaboration dan Stakeholder Leadership",
-  "B1. Serdik P3MDI mematuhi aturan bersama saat tidak ada yang mengawasi.",
-  "B2. Serdik P3MDI memperlakukan teman, petugas, dan staf pendukung dengan hormat, sama seperti saat menghormati pimpinan.",
-  "B3. Serdik P3MDI menegur penyimpangan yang terlihat, meskipun pelakunya teman dekat.",
-  "B4. Serdik P3MDI tidak menggunakan fasilitas atau kemudahan yang bukan haknya.",
-  "B5. Serdik P3MDI memperlakukan wewenang yang diberikan sebagai amanah, bukan keistimewaan.",
-  "B6. Serdik P3MDI hadir tepat waktu pada setiap kegiatan.",
-  "B7. Serdik P3MDI memiliki inisiatif yang tinggi untuk menjadi pemimpin, baik dalam lingkungan yang kecil maupun lingkungan yang besar.",
-  "B8. Serdik P3MDI memberi instruksi yang jelas saat memimpin tim.",
-  "B9. Serdik P3MDI tidak menyalahkan anggota tim ketika hasil kerja tim kurang baik.",
-  "B10. Serdik P3MDI menggerakkan tim sampai rencana benar-benar dijalankan.",
-  "B11. Serdik P3MDI mengaitkan keputusan tim dengan kepentingan organisasi dan bangsa.",
-  "B12. Serdik P3MDI mengubah perilakunya setelah menerima koreksi.",
-  "B13. Serdik P3MDI mendengarkan lawan bicara sampai selesai tanpa memotong.",
-  "B14. Ketika serdik P3MDI berbeda pendapat, ia mencari kepentingan kedua pihak, bukan hanya mempertahankan posisinya.",
-  "B15. Serdik P3MDI menyampaikan ketidaksetujuan dengan bahasa yang santun dan tidak merendahkan.",
-  "B16. Serdik P3MDI menjaga hubungan baik dengan pihak yang berbeda pandangan.",
-  "B17. Serdik P3MDI tetap bekerja efektif ketika instruksi atau jadwal berubah mendadak.",
-  "B18. Serdik P3MDI menyesuaikan cara kerjanya ketika sumber daya berkurang.",
-  "B19. Serdik P3MDI menjalani latihan fisik secara teratur dan bertahap sesuai kemampuannya.",
-  "B20. Serdik P3MDI bersemangat dalam semua kegiatan, tanpa pernah merasa lelah sedikit pun.",
-  "B21. Serdik P3MDI tetap tenang di depan tim saat situasi tidak pasti.",
-  "B22. Serdik P3MDI menjaga tidur, makan, dan hidrasi agar tetap pulih saat beban kegiatan tinggi.",
-  "B23. Serdik P3MDI tahu dan menerapkan cara yang sehat untuk meredakan tekanan.",
-  "B24. Serdik P3MDI mengendalikan emosi saat lelah, ditegur, atau berkonflik.",
-  "B25. Serdik P3MDI mampu membedakan fakta, asumsi, opini, dan rumor sebelum menyimpulkan.",
-  "B26. Serdik P3MDI mendasarkan rekomendasi pada data atau bukti.",
-  "B27. Serdik P3MDI memakai metode seperti 5 Why atau fishbone untuk menganalisis masalah.",
-  "B28. Serdik P3MDI menyiapkan lebih dari satu skenario (terbaik, terburuk, paling mungkin) sebelum memutuskan.",
-  "B29. Serdik P3MDI menentukan tanda pemicu dan respons untuk setiap skenario yang mungkin terjadi.",
-  "B30. Serdik P3MDI tidak pernah bingung saat dihadapkan situasi dinamis yang penuh ketidakpastian.",
-  "B31. Saya mengubah arahan umum menjadi tugas konkret dengan penanggung jawab dan tenggat.",
-  "B32. Saya menyusun rencana kerja sebelum memulai tugas besar.",
-  "B33. Saya memantau progres tugas terhadap target yang ditetapkan.",
-  "B34. Saya mencatat risiko dan rencana mitigasinya sejak awal tugas.",
-  "B35. Saya membantu tim memahami alasan perubahan sebelum menjalankannya.",
-  "B36. Saya segera memperbarui rencana kerja ketika terjadi perubahan.",
-  "B37. Saya memeriksa kualitas hasil kerja sebelum menyatakannya selesai.",
-  "B38. Saya memulai pekerjaan atau ide baru tetapi tidak menuntaskannya.",
-  "B39. Hasil kerja saya sempurna tanpa kekurangan apa pun.",
-  "B40. Saya memeriksa kesesuaian tindakan saya dengan aturan dan proses sebelum bertindak.",
-  "B41. Saya mengerjakan tugas kelompok dengan pembagian peran dan catatan kontribusi yang terbuka.",
-  "B42. Saya membaca aturan atau SOP yang berlaku sebelum menjalankan tugas terkait.",
-  "B43. Saya memahami batas kewenangan saya dalam setiap peran.",
-  "B44. Saya mendukung setiap laporan saya dengan bukti.",
-  "B45. Saya mencari pembenaran saat keputusan saya dipertanyakan.",
-  "B46. Saya menyampaikan potensi konflik kepentingan sebelum terlibat dalam suatu keputusan.",
-  "B47. Saya menghindari penggunaan kedekatan atau relasi untuk mendapat kemudahan.",
-  "B48. Saya menjalankan kewajiban sebagai warga negara dalam perilaku sehari-hari, seperti tertib dan menjaga fasilitas umum.",
-  "B49. Saya menghormati simbol negara dalam sikap saya saat apel, upacara, dan kegiatan resmi.",
-  "B50. Saya menghormati perbedaan suku, agama, dan budaya sebagai bagian dari persatuan bangsa.",
-  "B51. Saya mengambil pelajaran dari sejarah perjuangan bangsa untuk pekerjaan atau keputusan saya.",
-  "B52. Saya dapat menjelaskan peran negara dan BUMN dalam tugas yang saya kerjakan.",
-  "B53. Saya mengaitkan tugas saya dengan dampaknya bagi masyarakat.",
-  "B54. Saya memilih opsi dengan manfaat publik lebih besar saat kepentingan pribadi dan publik berbenturan.",
-  "B55. Saya memandang jabatan terutama sebagai jalan untuk kepentingan pribadi.",
-  "B56. Saya memetakan pihak yang berkepentingan beserta pengaruhnya sebelum memulai pekerjaan lintas tim.",
-  "B57. Saya mengutamakan keberhasilan kelompok saya walaupun merugikan kerja sama lintas kelompok.",
-  "B58. Saya menepati komitmen yang telah disepakati dengan mitra kerja.",
-  "B59. Saya memberi pengakuan atas kontribusi pihak lain.",
-  "B60. Saya memperhitungkan perbedaan logika pemerintah, BUMN, swasta, dan masyarakat saat bekerja sama.",
-  "B61. Saya mencari solusi yang memberi nilai publik sekaligus dapat dijalankan oleh semua mitra.",
-  "B62. Saya sependapat dengan semua orang tanpa pernah merasa kesal kepada siapa pun.",
+  "1. Serdik P3MDI tetap mematuhi aturan bersama saat tidak ada yang mengawasi.",
+  "2. Serdik P3MDI menegur penyimpangan, meskipun pelakunya teman dekat.",
+  "3. Serdik P3MDI mengerjakan ujian atau pretest tanpa menyontek atau menjiplak.",
+  "4. Serdik P3MDI mengajukan diri untuk memimpin saat ada tugas atau kegiatan.",
+  "5. Serdik P3MDI mengambil tanggung jawab sebagai pemimpin ketika hasil kerja timnya kurang baik.",
+  "6. Serdik P3MDI menggunakan wewenangnya untuk melayani tim, bukan untuk mendapat keistimewaan.",
+  "7. Serdik P3MDI mendengarkan lawan bicara sampai selesai tanpa memotong.",
+  "8. Serdik P3MDI menyampaikan ketidaksetujuan dengan bahasa yang santun.",
+  "9. Serdik P3MDI tetap bekerja efektif ketika rencana berubah mendadak.",
+  "10. Serdik P3MDI berlatih fisik secara teratur.",
+  "11. Serdik P3MDI tetap mengendalikan emosinya saat berada di bawah tekanan.",
+  "12. Serdik P3MDI membantu rekan yang terlihat kelelahan atau tertekan.",
+  "13. Serdik P3MDI membedakan fakta dan opini saat berdiskusi.",
+  "14. Serdik P3MDI mendasarkan usulannya pada data atau bukti.",
+  "15. Serdik P3MDI mencari akar masalah (misalnya dengan 5 Why atau fishbone) sebelum mengusulkan solusi.",
+  "16. Serdik P3MDI menyusun rencana kerja sebelum memulai tugas besar.",
+  "17. Serdik P3MDI menyelesaikan tugas sebelum tenggat waktu.",
+  "18. Serdik P3MDI menuntaskan pekerjaan yang sudah dimulainya.",
+  "19. Serdik P3MDI mendukung laporannya dengan bukti.",
+  "20. Serdik P3MDI menyampaikan potensi konflik kepentingan sebelum terlibat dalam suatu keputusan.",
+  "21. Serdik P3MDI menggunakan fasilitas sesuai haknya.",
+  "22. Serdik P3MDI bersikap hormat terhadap simbol negara saat apel, upacara, dan kegiatan resmi.",
+  "23. Serdik P3MDI menunjukkan kesungguhan dalam seluruh rangkaian program P3MD.",
+  "24. Serdik P3MDI memilih opsi dengan manfaat publik lebih besar saat kepentingan pribadi dan publik berbenturan.",
+  "25. Serdik P3MDI bekerja sama dengan rekan dari grup lain, bukan hanya dengan kelompoknya sendiri.",
+  "26. Serdik P3MDI bergaul dan bekerja sama tanpa membedakan suku, agama, dan budaya.",
+  "27. Serdik P3MDI mendukung keberhasilan kelompok lain, tidak hanya kelompoknya sendiri.",
+  "S1. Emotional Intelligence (Kecerdasan Emosional)",
+  "S2. Teamwork & Collaboration (Kerja Sama dan Kolaborasi)",
+  "S3. Conflict Management (Manajemen Konflik)",
+  "S4. Negotiation & Influencing (Negosiasi dan Mempengaruhi)",
+  "S5. Creativity & Innovation (Kreativitas dan Inovasi)",
+  "S6. Learning Agility (Kelincahan Belajar)",
+  "S7. Coaching & Mentoring (Pembinaan dan Pendampingan)",
+  "S8. Self-Awareness (Kesadaran Diri)",
+  "S9. Empathy (Empati)",
+  "S10. Feedback Management (Pengelolaan Umpan Balik)",
+  "S11. Pilih 3 soft skill yang paling ingin kamu kembangkan.",
   "Terakhir diperbarui",
   "Jumlah kirim"
 ];
@@ -121,7 +106,7 @@ function doPost(e) {
 
 /* Health check: opening the web app URL in a browser shows this. */
 function doGet() {
-  return json_({ ok: true, service: "Ekspedisi 9 Nilai P3MD", time: new Date().toISOString() });
+  return json_({ ok: true, service: "Ekspedisi 9 Nilai P3MD", version: 2, time: new Date().toISOString() });
 }
 
 function verifyToken_(token) {
@@ -144,23 +129,23 @@ function submit_(who, body) {
   if (["1", "2", "3", "4"].indexOf(grup) < 0) fail_("invalid", "Grup tidak valid.");
   if (["1", "2", "3"].indexOf(elemen) < 0) fail_("invalid", "Elemen tidak valid.");
   if ("ABCDEFGH".split("").indexOf(kelas) < 0) fail_("invalid", "Kelas tidak valid.");
-  const a = clean_(body.a, N_A, []);
-  const b = clean_(body.b, N_B, OPTIONAL_B);
+  const n = scale_(body.n, N_N, 4, "pernyataan 9 Nilai");
+  const s = scale_(body.s, N_S, 5, "penilaian soft skill");
+  const picks = picks_(body.picks);
 
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
     const sh = sheet_();
     const now = new Date();
-    const emails = sh.getLastRow() > 1 ? sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().map(r => String(r[0]).toLowerCase()) : [];
-    const idx = emails.indexOf(who.email);
+    const idx = emails_(sh).indexOf(who.email);
     if (idx >= 0) {
       const prev = rowToRecord_(sh.getRange(idx + 2, 1, 1, HEADERS.length).getValues()[0]);
       return Object.assign({ ok: false, error: "already_submitted",
         message: "Akun ini sudah mengirim jawaban. Setiap serdik hanya bisa mengirim satu kali." }, prev);
     }
-    const base = [nama, grup, elemen, kelas].concat(a, b);
-    sh.appendRow([now, who.email].concat(base, [now, 1]));
+    const picksText = picks.map(k => SOFT_LABELS[k]).join(", ");
+    sh.appendRow([now, who.email, nama, grup, elemen, kelas].concat(n, s, [picksText, now, 1]));
     return { ok: true, updated: false, at: now.toISOString() };
   } finally {
     lock.releaseLock();
@@ -172,37 +157,46 @@ function status_(email) {
   if (sh.getLastRow() < 2) return { ok: true, submitted: false };
   const rows = sh.getRange(2, 1, sh.getLastRow() - 1, HEADERS.length).getValues();
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][1]).toLowerCase() === email) {
-      return Object.assign({ ok: true }, rowToRecord_(rows[i]));
-    }
+    if (String(rows[i][1]).toLowerCase() === email) return Object.assign({ ok: true }, rowToRecord_(rows[i]));
   }
   return { ok: true, submitted: false };
+}
+
+function emails_(sh) {
+  return sh.getLastRow() > 1 ? sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().map(r => String(r[0]).toLowerCase()) : [];
 }
 
 /* Turn a sheet row back into the shape the site stores, so a serdik who
    already submitted sees their own answers (read-only) on any device. */
 function rowToRecord_(r) {
   const num = v => (v === "" || v === null) ? null : Number(v);
+  const o = 6;
+  const picksText = String(r[o + N_N + N_S] || "");
   return {
     submitted: true,
     at: new Date(r[0]).toISOString(),
     nama: String(r[2]), grup: String(r[3]), elemen: String(r[4]), kelas: String(r[5]),
-    a: r.slice(6, 6 + N_A).map(num),
-    b: r.slice(6 + N_A, 6 + N_A + N_B).map(num)
+    n: r.slice(o, o + N_N).map(num),
+    s: r.slice(o + N_N, o + N_N + N_S).map(num),
+    picks: SOFT_LABELS.map((l, k) => picksText.indexOf(l) >= 0 ? k : -1).filter(k => k >= 0)
   };
 }
 
-function clean_(arr, n, optional) {
-  if (!Array.isArray(arr) || arr.length !== n) fail_("invalid", "Jumlah jawaban tidak sesuai. Muat ulang halaman lalu coba lagi.");
-  return arr.map((v, i) => {
-    if (v === "" || v === null) {
-      if (optional.indexOf(i) >= 0) return "";
-      fail_("invalid", "Masih ada pernyataan wajib yang belum dijawab.");
-    }
+function scale_(arr, n, max, what) {
+  if (!Array.isArray(arr) || arr.length !== n) fail_("invalid", "Jumlah jawaban " + what + " tidak sesuai. Muat ulang halaman lalu coba lagi.");
+  return arr.map(v => {
     const x = Number(v);
-    if (!(x >= 1 && x <= 5 && Math.floor(x) === x)) fail_("invalid", "Ada jawaban di luar skala 1 sampai 5.");
+    if (v === null || v === "" || !(x >= 1 && x <= max && Math.floor(x) === x)) fail_("invalid", "Masih ada " + what + " yang belum dijawab atau di luar skala 1 sampai " + max + ".");
     return x;
   });
+}
+
+function picks_(arr) {
+  if (!Array.isArray(arr)) fail_("invalid", "Pilih tepat 3 soft skill.");
+  const ks = arr.map(Number);
+  const uniq = ks.filter((k, i) => ks.indexOf(k) === i);
+  if (uniq.length !== N_PICK || uniq.length !== ks.length || uniq.some(k => !(k >= 0 && k < N_S && Math.floor(k) === k))) fail_("invalid", "Pilih tepat 3 soft skill yang berbeda.");
+  return uniq.sort((a, b) => a - b);
 }
 
 function sheet_() {
@@ -227,7 +221,7 @@ function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
-/* Run once from the editor to create the sheet and grant permissions. */
+/* Run once from the editor to create the sheet tab and grant permissions. */
 function setup() {
   sheet_();
   UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=x", { muteHttpExceptions: true });
