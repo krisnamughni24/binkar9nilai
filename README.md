@@ -2,13 +2,13 @@
 
 A gamified front end for the **Survei Pemetaan 9 Nilai P3MD** (Tim Binkar ×
 Risdikti × SDM, Senat P3MD). Serdik sign in with their `@p3md.sbm-itb.ac.id`
-Google account, rate 27 statements about Serdik P3MDI in general as a
-9-checkpoint "expedition", rate 10 soft skills about themselves, pick 3 to
+Google account, rate 27 statements about Serdik P3MDI in general across
+three checkpoints, rate 10 soft skills about themselves, pick 3 to
 develop, and send everything with one click to a Google Sheet through an
 Apps Script receiver.
 
 ```
-Sign in ─▶ Identity ─▶ 9 Pos (27 × 1-4) ─▶ Soft skill (10 × 1-5) ─▶ Pick 3 ─▶ Kirim jawaban ─▶ Sheet "Jawaban v2"
+Sign in ─▶ Identity ─▶ 3 Pos (3 × 9 statements, 1-4) ─▶ Soft skill S1-S10 (1-5) + S11 pick 3 ─▶ Kirim jawaban ─▶ Sheet "Jawaban v2"
  (every visit)                                                                (token verified, one per email)
 ```
 
@@ -119,7 +119,9 @@ Kelas, statements 1-27 (scale 1-4), S1-S10 (scale 1-5), S11 (the three chosen
 soft skills as "A, B, C", same format as a Google Forms checkbox),
 Terakhir diperbarui, Jumlah kirim.
 
-Instrument v2 and how the site groups it:
+Instrument v2. The site follows the form's sections: three checkpoints of nine
+statements (9 Nilai P3MD 1/3, 2/3, 3/3), then the soft-skill stage numbered
+S1-S11. Each statement also maps to one value, used for the results chart:
 
 | Statements | Value |
 |---|---|

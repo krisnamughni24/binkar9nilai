@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Survei Pemetaan 9 Nilai dan soft skill P3MD dalam bentuk ekspedisi 9 pos.">
+<meta name="description" content="Survei Pemetaan 9 Nilai dan soft skill P3MD dalam bentuk ekspedisi.">
 <style>
 :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); color-scheme: light; }
 html, body { margin: 0; }
@@ -366,7 +366,7 @@ body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-event
 .pick[aria-pressed="true"] .pk-n { background: var(--brass); border-color: var(--brass); color: #fff; }
 .pick:disabled { opacity: .45; cursor: not-allowed; }
 .pick:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-.shelf { grid-template-columns: repeat(10, 1fr); }
+.shelf.four { grid-template-columns: repeat(4, 1fr); width: 100%; max-width: 300px; margin-inline: auto; gap: 12px; }
 .chips-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .chip.gold-chip { background: var(--brass); color: #fff; font-weight: 600; }
 .radar .lab-pick { fill: var(--brass); font-weight: 700; }
@@ -381,7 +381,7 @@ body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-event
 .bt-axis { position: relative; height: 14px; font-family: var(--f-mono); }
 .bt-axis em { position: absolute; top: 0; transform: translateX(-50%); font-style: normal; }
 .bt-axis em:last-child { transform: translateX(-100%); }
-@media (max-width: 520px) { .shelf { grid-template-columns: repeat(5, 1fr); } }
+@media (max-width: 520px) { .shelf.four { grid-template-columns: repeat(4, 1fr); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 <script src="config.js"></script>
@@ -418,6 +418,15 @@ const VALUES = [
   { name: "Nation Building dan Public Purpose", glyph: "M18 42 V14 M18 15 H39 L35 21 L39 27 H18" },
   { name: "Collaboration dan Stakeholder Leadership", glyph: "M13 29 L20 22 L27 26 L33 21 L43 29 M20 32 L25 36 M24 29 L30 34 M29 26 L35 31 L31 35" }
 ];
+/* The form groups the 27 statements into three sections of nine; each section
+   becomes one checkpoint. Values stay attached to each statement for the results. */
+const POS = [
+  { name: "9 Nilai P3MD (1/3)", vals: [0, 1, 2], glyph: VALUES[0].glyph },
+  { name: "9 Nilai P3MD (2/3)", vals: [3, 4, 5], glyph: VALUES[3].glyph },
+  { name: "9 Nilai P3MD (3/3)", vals: [6, 7, 8], glyph: VALUES[8].glyph }
+];
+const NPOS = POS.length;
+const posOf = i => Math.floor(i / 9);
 const SOFT_GLYPH = "M28 15 A6 6 0 1 1 28 27 A6 6 0 1 1 28 15 M17 42 C17 35 22 31 28 31 C34 31 39 35 39 42";
 const SHORT = ["Integritas", "Kepemimpinan", "Komunikasi", "Resiliensi", "Analitis", "Eksekusi", "Governance", "Kebangsaan", "Kolaborasi"];
 const S = "Serdik P3MDI ";
@@ -467,7 +476,7 @@ const SOFT = [
 const softLabel = k => `${SOFT[k].en} (${SOFT[k].id})`;
 const LEVEL5 = ["Belum berkembang", "Mulai berkembang", "Cukup berkembang", "Berkembang dengan baik", "Sangat berkembang"];
 const LEVEL5_HINT = ["Masih sangat perlu ditingkatkan", "Punya kemampuan dasar, masih perlu banyak pengembangan", "Sudah cukup, tetapi penerapannya belum konsisten", "Mampu menerapkan secara baik dan konsisten", "Menguasai dengan sangat baik, jadi keunggulan diri"];
-const RANKS = [[0, "Kadet"], [130, "Pratama"], [300, "Madya"], [470, "Utama"], [620, "Paripurna"]];
+const RANKS = [[0, "Kadet"], [120, "Pratama"], [260, "Madya"], [410, "Utama"], [550, "Paripurna"]];
 
 /* ---------- Auth ----------
    Google Identity Services gives us an ID token in the browser. The receiver
@@ -539,19 +548,21 @@ function save() { try { localStorage.setItem(KEY(), JSON.stringify(st)); } catch
 let st = load() || fresh();
 if (st.screen !== "finish" || !st.sentAt) st.screen = "intro";
 
-const SOFT_POS = 9; // badge index for the soft-skill stage
-const posItems = p => N.map((x, i) => x[0] === p ? i : -1).filter(i => i >= 0);
+const SOFT_POS = NPOS; // badge index for the soft-skill stage
+const posItems = p => N.map((x, i) => posOf(i) === p ? i : -1).filter(i => i >= 0);
 const posDone = p => p === SOFT_POS ? softDone() : posItems(p).every(i => st.n[i] !== null);
 const nDone = () => st.n.every(v => v !== null);
 const sDone = () => st.s.every(v => v !== null);
 const picksDone = () => st.picks.length === 3;
 const softDone = () => sDone() && picksDone();
+const softAnswered = () => st.s.filter(v => v !== null).length + (picksDone() ? 1 : 0);
+const softDots = cur => `<div class="dots" aria-hidden="true">${[...Array(11).keys()].map(j => `<span class="dot ${(j < 10 ? st.s[j] !== null : picksDone()) ? "a" : ""} ${j === cur ? "c" : ""}"></span>`).join("")}</div>`;
 const idDone = () => !!(st.id.nama.trim() && st.id.grup && st.id.elemen && st.id.kelas);
 const allDone = () => idDone() && nDone() && softDone();
 function points() {
   // Points reward completion only, never the size of an answer.
   let x = st.n.filter(v => v !== null).length * 10 + st.s.filter(v => v !== null).length * 10;
-  for (let p = 0; p < 9; p++) if (posDone(p)) x += 25;
+  for (let p = 0; p < NPOS; p++) if (posDone(p)) x += 50;
   if (picksDone()) x += 30;
   if (softDone()) x += 25;
   return x;
@@ -565,22 +576,22 @@ const f1 = v => v ? (Math.round(v * 10) / 10).toString().replace(".", ",") : "-"
 const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const KAWUNG = `<svg class="kawung" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(45 12 12)"><ellipse cx="12" cy="5.5" rx="3.2" ry="5"/><ellipse cx="12" cy="18.5" rx="3.2" ry="5"/><ellipse cx="5.5" cy="12" rx="5" ry="3.2"/><ellipse cx="18.5" cy="12" rx="5" ry="3.2"/></g><circle cx="12" cy="12" r="1.6"/></svg>`;
 function insignia(p, got, cls = "") {
-  const glyph = p === SOFT_POS ? SOFT_GLYPH : VALUES[p].glyph;
+  const glyph = p === SOFT_POS ? SOFT_GLYPH : POS[p].glyph;
   return `<div class="ins ${got ? "got" : ""} ${cls}" aria-hidden="true"><svg viewBox="0 0 56 56">
     <path class="base" d="M28 2 L50 12 V30 C50 43 40 51 28 54 C16 51 6 43 6 30 V12 Z"/>
     <path class="glyph" d="${glyph}"/></svg></div>`;
 }
-const shelf = () => `<div class="shelf" style="width:100%">${[...Array(10).keys()].map(j => insignia(j, posDone(j))).join("")}</div>`;
-const badgeName = p => p === SOFT_POS ? "Soft Skill" : VALUES[p].name;
+const shelf = () => `<div class="shelf four">${[...Array(NPOS + 1).keys()].map(j => insignia(j, posDone(j))).join("")}</div>`;
+const badgeName = p => p === SOFT_POS ? "Soft Skill" : POS[p].name;
 let lastPts = 0;
 function chrome() {
   const r = document.getElementById("route");
   const softOn = ["softintro", "soft", "picks"].includes(st.screen);
   let h = "";
   for (let p = 0; p <= SOFT_POS; p++) {
-    const on = p === SOFT_POS ? softOn : (st.screen === "q" && N[st.qi][0] === p);
+    const on = p === SOFT_POS ? softOn : (st.screen === "q" && posOf(st.qi) === p);
     const label = p === SOFT_POS ? `<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><circle cx="6" cy="3.6" r="2.3" fill="currentColor"/><path d="M1.6 11 C1.6 7.6 3.6 6.6 6 6.6 S10.4 7.6 10.4 11Z" fill="currentColor"/></svg>` : p + 1;
-    h += `<span class="pin ${posDone(p) ? "done" : ""} ${on ? "on" : ""}" title="${p === SOFT_POS ? "Soft skill" : `Pos ${p + 1}: ${esc(VALUES[p].name)}`}">${label}</span>`;
+    h += `<span class="pin ${posDone(p) ? "done" : ""} ${on ? "on" : ""}" title="${p === SOFT_POS ? "Soft skill" : `Pos ${p + 1}: ${esc(POS[p].name)}`}">${label}</span>`;
     if (p < SOFT_POS) h += `<span class="seg ${posDone(p) ? "done" : ""}"></span>`;
   }
   r.innerHTML = h;
@@ -611,7 +622,7 @@ function resume() {
 }
 function nextAfterPos() {
   const n = st.n.findIndex(v => v === null);
-  if (n >= 0) return ["q", { qi: n }, `Lanjut ke Pos ${N[n][0] + 1}`];
+  if (n >= 0) return ["q", { qi: n }, `Lanjut ke Pos ${posOf(n) + 1}`];
   if (!sDone()) return st.s.some(v => v !== null) ? ["soft", { si: st.s.findIndex(v => v === null) }, "Lanjut ke Soft Skill"] : ["softintro", {}, "Lanjut ke Soft Skill"];
   if (!picksDone()) return ["picks", {}, "Pilih 3 soft skill"];
   return ["finish", {}, "Lanjut ke pengiriman"];
@@ -650,12 +661,12 @@ const screens = {
     return `<section class="card stack">
       <div class="band geo"><div class="shapes" aria-hidden="true">${KAWUNG.repeat(3)}</div><span class="eyebrow">Tim Binkar × Risdikti × SDM · Senat P3MD</span>
       <h1>Survei Pemetaan 9 Nilai</h1></div>
-      <p class="lede">Halo, rekan Serdik! Lewati 9 pos nilai, lalu mampir ke markas soft skill. Kumpulkan sepuluh lencananya.</p>
-      <div class="facts-line"><span>37 pernyataan + pilih 3</span><span>± 6 menit</span><span>Tersimpan otomatis</span></div>
+      <p class="lede">Halo, rekan Serdik! Lewati 3 pos 9 Nilai, lalu mampir ke markas soft skill. Kumpulkan keempat lencananya.</p>
+      <div class="facts-line"><span>27 pernyataan + 11 soft skill</span><span>± 6 menit</span><span>Tersimpan otomatis</span></div>
       <ol class="steps">
         <li>Identitas<small>Nama, grup, elemen, kelas</small></li>
-        <li>9 Nilai<small>27 pernyataan tentang serdik pada umumnya</small></li>
-        <li>Soft skill<small>10 penilaian diri + pilih 3</small></li>
+        <li>9 Nilai<small>3 pos · 27 pernyataan tentang serdik pada umumnya</small></li>
+        <li>Soft skill<small>11 pertanyaan tentang dirimu</small></li>
         <li>Kirim<small>${CFG.submitUrl ? "sekali klik dari sini" : "lewat Google Form"}</small></li>
       </ol>
       <div class="stack" style="gap:8px">
@@ -701,38 +712,38 @@ const screens = {
   },
 
   map() {
-    const done = [...Array(9).keys()].filter(posDone).length;
+    const done = [...Array(NPOS).keys()].filter(posDone).length;
     const next = st.n.findIndex(v => v === null);
-    const nowPos = next >= 0 ? N[next][0] : -1;
+    const nowPos = next >= 0 ? posOf(next) : -1;
     const sFilled = st.s.filter(v => v !== null).length;
     return `<section class="card stack">
       <div class="band geo"><span class="eyebrow">Langkah 2 dari 4 · 9 Nilai P3MD</span>
-      <h2>${done === 9 ? "Semua pos tercapai" : done ? `${done} dari 9 pos tercapai` : "Sembilan pos menunggu"}</h2></div>
+      <h2>${done === NPOS ? "Semua pos tercapai" : done ? `${done} dari 3 pos tercapai` : "Tiga pos menunggu"}</h2></div>
       <p class="note">Nilailah <b>serdik P3MDI pada umumnya</b> berdasarkan yang benar-benar kamu lihat, bukan dirimu sendiri dan bukan satu-dua orang tertentu.</p>
       ${goBtn(next >= 0 ? ["q", { qi: next }, st.n.some(v => v !== null) ? `Lanjut ke Pos ${nowPos + 1}` : "Berangkat ke Pos 1"] : nextAfterPos())}
-      <ol class="route-list">${VALUES.map((v, p) => {
+      <ol class="route-list">${POS.map((v, p) => {
         const items = posItems(p), filled = items.filter(i => st.n[i] !== null).length, d = filled === items.length;
         return `<li><button class="stop ${p === nowPos ? "now" : ""}" onclick="openPos(${p})">${insignia(p, d)}
           <div style="min-width:0"><div class="name">Pos ${p + 1} · ${esc(v.name)}</div>
-            <div class="sub">${d ? "<b>Selesai</b>" : `${filled}/${items.length} pernyataan`}</div>
+            <div class="sub">${d ? "<b>Selesai</b>" : `${filled}/${items.length} pernyataan`} · ${v.vals.map(k => esc(SHORT[k])).join(", ")}</div>
             <div class="mini"><i style="width:${filled / items.length * 100}%"></i></div></div>
           <span class="go" aria-hidden="true">›</span></button></li>`;
       }).join("")}
         <li><button class="stop ${nDone() && !softDone() ? "now" : ""}" onclick="${sFilled ? "go('soft',{si:" + Math.max(0, st.s.findIndex(v => v === null)) + "})" : "go('softintro')"}">${insignia(SOFT_POS, softDone())}
           <div style="min-width:0"><div class="name">Markas · Soft Skill</div>
-            <div class="sub">${softDone() ? "<b>Selesai</b>" : `${sFilled}/10 penilaian · pilih 3`} · tentang dirimu</div>
-            <div class="mini"><i style="width:${(sFilled + st.picks.length) / 13 * 100}%"></i></div></div>
+            <div class="sub">${softDone() ? "<b>Selesai</b>" : `${sFilled + (picksDone() ? 1 : 0)}/11 pertanyaan`} · tentang dirimu</div>
+            <div class="mini"><i style="width:${(sFilled + (picksDone() ? 1 : 0)) / 11 * 100}%"></i></div></div>
           <span class="go" aria-hidden="true">›</span></button></li></ol>
     </section>`;
   },
 
   q() {
-    const i = st.qi, [p, text] = N[i];
+    const i = st.qi, [val, text] = N[i], p = posOf(i);
     const items = posItems(p), k = items.indexOf(i);
     const answered = st.n.filter(v => v !== null).length;
     return `<section class="card stack qcard" aria-labelledby="stmt">
       <div class="overall"><span>${answered}/${N.length}</span><div class="meter"><i style="width:${answered / N.length * 100}%"></i></div></div>
-      <div class="qhead"><div><span class="eyebrow">Pos ${p + 1} dari 9 · No. ${i + 1}</span><div class="posname">${esc(VALUES[p].name)}</div></div>
+      <div class="qhead"><div><span class="eyebrow">Pos ${p + 1} dari 3 · No. ${i + 1} dari 27</span><div class="posname">${esc(POS[p].name)}</div><div class="muted" style="font-weight:600">Nilai: ${esc(VALUES[val].name)}</div></div>
         <div class="dots" aria-label="Pernyataan ${k + 1} dari ${items.length}">${items.map((j, n) => `<span class="dot ${st.n[j] !== null ? "a" : ""} ${n === k ? "c" : ""}"></span>`).join("")}</div></div>
       <div class="row"><span class="chip peer">Tentang serdik P3MDI pada umumnya</span></div>
       <p class="statement" id="stmt">${esc(text)}</p>
@@ -747,14 +758,14 @@ const screens = {
   },
 
   posdone() {
-    const p = st.lastPos, done = [...Array(10).keys()].filter(posDone).length;
-    const breather = p === 8 ? `<p class="note">Sembilan pos selesai. Di markas berikutnya sudut pandangnya berganti: kamu menilai <b>dirimu sendiri</b>.</p>`
-      : done === 5 ? `<p class="note">Lebih dari separuh jalan. Tarik napas sebentar.</p>` : "";
+    const p = st.lastPos, done = [...Array(NPOS + 1).keys()].filter(posDone).length;
+    const breather = p === NPOS - 1 ? `<p class="note">Ketiga pos selesai. Di markas berikutnya sudut pandangnya berganti: kamu menilai <b>dirimu sendiri</b>.</p>`
+      : p === 0 ? `<p class="note">Satu pos selesai. Tetap bayangkan serdik pada umumnya, bukan satu-dua orang.</p>` : "";
     return `<section class="card stack center">
       <div class="stamp-wrap geo">${insignia(p, true, "big stamp")}</div>
       <span class="eyebrow">${p === SOFT_POS ? "Markas tercapai" : `Pos ${p + 1} tercapai`}</span>
       <h2>Lencana ${esc(badgeName(p))}</h2>
-      <p class="muted">${done} dari 10 lencana terkumpul.</p>
+      <p class="muted">${done} dari 4 lencana terkumpul.</p>
       ${breather}
       ${shelf()}
       ${goBtn(nextAfterPos())}
@@ -777,11 +788,11 @@ const screens = {
 
   soft() {
     const k = st.si, sk = SOFT[k];
-    const answered = st.s.filter(v => v !== null).length;
+    const answered = softAnswered();
     return `<section class="card stack qcard" aria-labelledby="sname">
-      <div class="overall"><span>${answered}/10</span><div class="meter"><i style="width:${answered * 10}%"></i></div></div>
-      <div class="qhead"><div><span class="eyebrow">Soft skill · S${k + 1} dari 10</span><div class="posname" id="sname">${esc(sk.en)}</div><div class="muted" style="font-weight:600">${esc(sk.id)}</div></div>
-        <div class="dots" aria-hidden="true">${SOFT.map((_, j) => `<span class="dot ${st.s[j] !== null ? "a" : ""} ${j === k ? "c" : ""}"></span>`).join("")}</div></div>
+      <div class="overall"><span>${answered}/11</span><div class="meter"><i style="width:${answered / 11 * 100}%"></i></div></div>
+      <div class="qhead"><div><span class="eyebrow">Soft skill · S${k + 1} dari 11</span><div class="posname" id="sname">${esc(sk.en)}</div><div class="muted" style="font-weight:600">${esc(sk.id)}</div></div>
+        ${softDots(k)}</div>
       <div class="row"><span class="chip self">Tentang diri saya</span></div>
       <p class="sdesc">${esc(sk.desc)}</p>
       <div class="scale q-scale lv" role="radiogroup" aria-labelledby="sname">${[1,2,3,4,5].map(v =>
@@ -797,8 +808,8 @@ const screens = {
   picks() {
     const n = st.picks.length;
     return `<section class="card stack">
-      <div class="band geo"><span class="eyebrow">Langkah 3 dari 4 · S11</span>
-      <h2>Pilih 3 yang paling ingin kamu kembangkan</h2></div>
+      <div class="overall"><span>${softAnswered()}/11</span><div class="meter"><i style="width:${softAnswered() / 11 * 100}%"></i></div></div>
+      <div class="qhead"><div><span class="eyebrow">Soft skill · S11 dari 11</span><div class="posname">Pilih 3 yang paling ingin kamu kembangkan</div></div>${softDots(10)}</div>
       <div class="pickhead"><span class="muted">Pilih tepat 3.</span><span class="pickcount ${n === 3 ? "ok" : ""}" aria-live="polite">${n}/3 dipilih</span></div>
       <div class="picks">${SOFT.map((sk, k) => {
         const on = st.picks.includes(k), dis = !on && n >= 3;
@@ -806,21 +817,21 @@ const screens = {
           <span class="pk-n">${on ? st.picks.indexOf(k) + 1 : ""}</span>
           <span class="pk-t"><b>${esc(sk.en)}</b><small>${esc(sk.id)}${st.s[k] ? ` · nilaimu ${st.s[k]}` : ""}</small></span></button>`;
       }).join("")}</div>
-      <div class="row end"><button class="btn alt" onclick="go('soft',{si:9})">Kembali</button>
+      <div class="row end"><button class="btn alt" onclick="go('soft',{si:9})">← S10</button>
         <button class="btn ${n === 3 ? "gold" : ""}" ${n === 3 ? "" : "disabled"} onclick="picksNext()">Selesai</button></div>
     </section>`;
   },
 
   finish() {
-    const missPos = [...Array(9).keys()].filter(p => !posDone(p));
+    const missPos = [...Array(NPOS).keys()].filter(p => !posDone(p));
     const ok = allDone();
     const wired = FORM.publishedId && FORM.entries.length === 4 + N.length + SOFT.length + 1;
     const first = esc(st.id.nama.trim().split(" ")[0] || "Serdik");
     const tiles = [
       `<button class="tile ${idDone() ? "" : "miss"}" onclick="go('id')"><b>Identitas</b>${idDone() ? `Grup ${st.id.grup} · Elemen ${st.id.elemen} · Kelas ${st.id.kelas}` : "Belum lengkap"}</button>`,
-      ...VALUES.map((v, p) => `<button class="tile ${missPos.includes(p) ? "miss" : ""}" onclick="openPos(${p})"><b>Pos ${p + 1}</b>${missPos.includes(p) ? "Belum lengkap" : esc(SHORT[p])}</button>`),
-      `<button class="tile ${sDone() ? "" : "miss"}" onclick="go('soft',{si:${Math.max(0, st.s.findIndex(v => v === null))}})"><b>Soft skill</b>${sDone() ? "S1–S10 lengkap" : "Belum lengkap"}</button>`,
-      `<button class="tile ${picksDone() ? "" : "miss"}" onclick="go('picks')"><b>Pilih 3</b>${picksDone() ? "Lengkap" : `${st.picks.length}/3 dipilih`}</button>`
+      ...POS.map((v, p) => { const f = posItems(p).filter(i => st.n[i] !== null).length;
+        return `<button class="tile ${missPos.includes(p) ? "miss" : ""}" onclick="openPos(${p})"><b>Pos ${p + 1}</b>${f}/9 pernyataan</button>`; }),
+      `<button class="tile ${softDone() ? "" : "miss"}" onclick="${sDone() ? "go('picks')" : `go('soft',{si:${Math.max(0, st.s.findIndex(v => v === null))}})`}"><b>Soft skill</b>${softAnswered()}/11 pertanyaan</button>`
     ].join("");
     return `<section class="card stack">
       <div class="band geo"><span class="eyebrow">Langkah 4 dari 4 · Kirim</span>
@@ -865,13 +876,13 @@ function softRadar() {
   });
   return `<svg class="radar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik radar penilaian diri 10 soft skill">${g}${poly}${dots}${labels}</svg>`;
 }
-function posScore(p) {
-  const vals = posItems(p).map(i => st.n[i]).filter(v => typeof v === "number");
+function valueScore(v) {
+  const vals = N.map((x, i) => x[0] === v ? st.n[i] : null).filter(x => typeof x === "number");
   return vals.length ? vals.reduce((x, y) => x + y, 0) / vals.length : 0;
 }
 function valueBars() {
   return `<div class="bars">${VALUES.map((v, p) => {
-    const sc = posScore(p);
+    const sc = valueScore(p);
     return `<div class="barrow"><span class="bl">${esc(SHORT[p])}</span><span class="bt"><i style="width:${sc / 4 * 100}%"></i></span><span class="bv">${f1(sc)}</span></div>`;
   }).join("")}<div class="barrow axis"><span></span><span class="bt-axis">${[1,2,3,4].map(k => `<em style="left:${k * 25}%">${k}</em>`).join("")}</span><span></span></div></div>`;
 }
@@ -1027,7 +1038,7 @@ function openPos(p) { const it = posItems(p); const f = it.find(i => st.n[i] ===
 let busy = false;
 function answer(v) {
   if (busy) return;
-  const i = st.qi, p = N[i][0], wasDone = posDone(p);
+  const i = st.qi, p = posOf(i), wasDone = posDone(p);
   st.n[i] = v; save(); render();
   busy = true;
   setTimeout(() => {
@@ -1037,7 +1048,7 @@ function answer(v) {
   }, 260);
 }
 function advance() {
-  const i = st.qi, it = posItems(N[i][0]);
+  const i = st.qi, it = posItems(posOf(i));
   const nextInPos = it.find(j => j > i && st.n[j] === null) ?? it.find(j => j > i);
   if (nextInPos !== undefined) return go("q", { qi: nextInPos });
   const t = nextAfterPos(); go(t[0], t[1]);
