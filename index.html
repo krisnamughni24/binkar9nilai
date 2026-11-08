@@ -370,6 +370,7 @@ body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-event
 .shelf.four { grid-template-columns: repeat(4, 1fr); width: 100%; max-width: 300px; margin-inline: auto; gap: 12px; }
 .chips-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .chip.gold-chip { background: var(--brass); color: #fff; font-weight: 600; }
+.copper { color: var(--brass); font-weight: 700; }
 .radar .lab-pick { fill: var(--brass); font-weight: 700; }
 .radar .pick-pt { fill: var(--brass); stroke: #fff; stroke-width: 1.5; }
 .bars { display: grid; gap: 8px; width: 100%; }
@@ -861,7 +862,7 @@ const screens = {
       <div class="band geo" style="align-items:center;text-align:center"><span class="eyebrow">Terima kasih sudah berpartisipasi</span>
         <h2>Ekspedisi tuntas</h2><div class="score-big"><b>4/4</b><span>lencana</span></div></div>
       <span class="eyebrow">Profil soft skill-mu</span>
-      <p class="muted">Angka di tiap label adalah penilaianmu sendiri di S1–S10 (1 = belum berkembang, 5 = sangat berkembang). Tiga soft skill yang ingin kamu kembangkan ditandai tembaga.</p>
+      <p class="muted">Angka di tiap label adalah penilaianmu sendiri di S1–S10 (1 = belum berkembang, 5 = sangat berkembang). Tiga soft skill yang ingin kamu kembangkan ditandai <b class="copper">warna tembaga</b>.</p>
       <div class="radar-box" style="width:100%">${softRadar()}</div>
       <div class="chips-row">${st.picks.map(k => `<span class="chip gold-chip">${esc(SOFT[k].en)}</span>`).join("")}</div>
     </section>
