@@ -650,7 +650,7 @@ const screens = {
         <li>Soft skill<small>11 pertanyaan tentang dirimu</small></li>
         <li>Kirim<small>${CFG.submitUrl ? "sekali klik dari sini" : "lewat Google Form"}</small></li>
       </ol>
-      ${started && !checking ? `<p class="note">Kamu punya isian yang belum dikirim dan masih tersimpan di perangkat ini.</p>` : ""}
+      ${started && !checking ? `<p class="note">Kamu punya isian yang <b>belum dikirim</b> dan masih tersimpan di perangkat ini: ${st.n.filter(v => v !== null).length}/27 pernyataan 9 Nilai dan ${softAnswered()}/11 pertanyaan soft skill. Isian ini belum masuk ke data panitia sampai kamu menekan Kirim jawaban.</p>` : ""}
       <div class="stack" style="gap:8px">
         <button class="btn gold block" ${checking ? "disabled" : ""} onclick="${started ? "resume()" : "go('id')"}">${checking ? "Memeriksa status pengisianmu…" : started ? "Lanjutkan ekspedisi" : "Mulai ekspedisi"}</button>
         ${started && !checking ? `<button class="btn alt block" onclick="restart()">Mulai dari awal</button>` : ""}
