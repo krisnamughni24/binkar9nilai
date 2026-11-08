@@ -815,7 +815,7 @@ const screens = {
         const on = st.picks.includes(k), dis = !on && n >= 3;
         return `<button type="button" class="pick" id="pick${k}" aria-pressed="${on}" ${dis ? "disabled" : ""} onclick="togglePick(${k})">
           <span class="pk-n">${on ? st.picks.indexOf(k) + 1 : ""}</span>
-          <span class="pk-t"><b>${esc(sk.en)}</b><small>${esc(sk.id)}${st.s[k] ? ` · nilaimu ${st.s[k]}` : ""}</small></span></button>`;
+          <span class="pk-t"><b>${esc(sk.en)}</b><small>${esc(sk.id)}</small></span></button>`;
       }).join("")}</div>
       <div class="row end"><button class="btn alt" onclick="go('soft',{si:9})">← S10</button>
         <button class="btn ${n === 3 ? "gold" : ""}" ${n === 3 ? "" : "disabled"} onclick="picksNext()">Selesai</button></div>
