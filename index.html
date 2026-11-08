@@ -331,6 +331,7 @@ body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-event
 .sent { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; padding: 16px; border-radius: 12px; background: var(--teal-soft); --geo-c: var(--teal); --geo-o: .1; }
 .sent-mark { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--teal); color: #fff; font-size: 22px; font-weight: 700; }
 .sent p { font-size: 14px; color: var(--ink-2); margin-top: 2px; }
+.saveline { font-size: 13px; color: var(--teal); font-weight: 600; text-align: center; }
 .score-big { display: flex; align-items: baseline; gap: 8px; font-family: var(--f-display); font-weight: 800; color: #fff; }
 .score-big b { font-size: 64px; line-height: 1; }
 .score-big span { font-size: 22px; text-transform: uppercase; letter-spacing: .06em; color: #F6E3B8; }
@@ -509,7 +510,8 @@ function onCredential(resp) {
     auth = { email, name: c.name || "", token: resp.credential, exp: (Number(c.exp) || 0) * 1000 };
     authError = "";
     if (resuming) { sendState = { busy: false, reauth: false, error: "" }; submitAnswers(); return; }
-    st = load() || fresh();
+    st = fresh();
+    saveState = { busy: false, at: null, error: "" };
     st.screen = "intro";
     if (!st.id.nama && auth.name) { st.id.nama = auth.name; save(); }
     render();
@@ -532,20 +534,48 @@ function initGis() {
 window.addEventListener("load", initGis);
 
 /* ---------- State ----------
-   Drafts are kept per account so a shared device never mixes two people's answers.
-   v2 = the 27-statement + soft-skill instrument; v1 drafts are ignored. */
-const KEY_BASE = "ekspedisi9nilai.v2";
-const KEY = () => KEY_BASE + ":" + (auth ? auth.email : "anon");
+   Nothing is stored on the device. Progress is saved to the Google Sheet
+   (tab "Draf") after identity, after each checkpoint and after the soft-skill
+   stage, and loaded back from the sheet after sign-in on any device. */
+try { Object.keys(localStorage).filter(k => k.indexOf("ekspedisi9nilai.") === 0).forEach(k => localStorage.removeItem(k)); } catch (e) {}
 function fresh() { return { screen: "intro", id: { nama: "", grup: "", elemen: "", kelas: "" }, n: Array(N.length).fill(null), s: Array(SOFT.length).fill(null), picks: [], qi: 0, si: 0, sent: false }; }
-function load() {
-  try {
-    const s = JSON.parse(localStorage.getItem(KEY()));
-    return s && Array.isArray(s.n) && s.n.length === N.length && Array.isArray(s.s) && s.s.length === SOFT.length && Array.isArray(s.picks) ? s : null;
-  } catch (e) { return null; }
+function save() { /* in-memory only; see saveProgress() */ }
+let st = fresh();
+
+/* ---------- Server-side progress ---------- */
+let saveState = { busy: false, at: null, error: "" };
+function postReceiver(body, signal) {
+  // text/plain keeps this a "simple" request, so Apps Script needs no CORS preflight.
+  return fetch(CFG.submitUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ idToken: auth.token }, body)), redirect: "follow", signal }).then(r => r.json());
 }
-function save() { try { localStorage.setItem(KEY(), JSON.stringify(st)); } catch (e) {} }
-let st = load() || fresh();
-if (st.screen !== "finish" || !st.sentAt) st.screen = "intro";
+const tokenFresh = (ms = 60 * 1000) => !!(auth && auth.token && auth.exp && auth.exp - Date.now() > ms);
+async function saveProgress() {
+  if (!CFG.submitUrl || !auth || locked()) return;
+  if (!tokenFresh()) { saveState = { busy: false, at: saveState.at, error: "Sesi login sudah lewat satu jam, jadi progres terakhir belum tersimpan. Keluar lalu masuk lagi untuk menyimpan." }; render(); return; }
+  saveState = { busy: true, at: saveState.at, error: "" }; render();
+  try {
+    const out = await postReceiver({ action: "save", nama: st.id.nama.trim(), grup: st.id.grup, elemen: st.id.elemen, kelas: st.id.kelas, n: st.n, s: st.s, picks: st.picks });
+    if (out.ok) { saveState = { busy: false, at: out.at, error: "" }; toast("Progres tersimpan"); }
+    else if (out.error === "already_submitted") { saveState = { busy: false, at: null, error: "" }; applyServerRecord(out); toast("Akun ini sudah pernah mengirim jawaban"); }
+    else saveState = { busy: false, at: saveState.at, error: out.message || "Progres belum tersimpan. Akan dicoba lagi di pos berikutnya." };
+  } catch (e) {
+    saveState = { busy: false, at: saveState.at, error: "Progres belum tersimpan karena koneksi terputus. Akan dicoba lagi di pos berikutnya." };
+  }
+  render();
+}
+async function clearProgress() {
+  if (!CFG.submitUrl || !auth || !tokenFresh()) return;
+  try { await postReceiver({ action: "clear" }); } catch (e) {}
+}
+function applyDraft(d) {
+  const num = v => (v === null || v === "" ? null : Number(v));
+  st = fresh();
+  st.id = { nama: d.nama || (auth && auth.name) || "", grup: String(d.grup || ""), elemen: String(d.elemen || ""), kelas: String(d.kelas || "") };
+  if (Array.isArray(d.n) && d.n.length === N.length) st.n = d.n.map(num);
+  if (Array.isArray(d.s) && d.s.length === SOFT.length) st.s = d.s.map(num);
+  if (Array.isArray(d.picks)) st.picks = d.picks.map(Number).filter(k => k >= 0 && k < SOFT.length).slice(0, 3);
+  saveState = { busy: false, at: d.at, error: "" };
+}
 
 const SOFT_POS = NPOS; // badge index for the soft-skill stage
 const posItems = p => N.map((x, i) => posOf(i) === p ? i : -1).filter(i => i >= 0);
@@ -609,6 +639,8 @@ function nextAfterPos() {
   if (!picksDone()) return ["picks", {}, "Pilih 3 soft skill"];
   return ["finish", {}, "Lanjut ke pengiriman"];
 }
+const saveNote = () => !CFG.submitUrl ? "" : saveState.error ? `<p class="status warn" role="alert">${esc(saveState.error)}</p>`
+  : saveState.busy ? `<p class="saveline">Menyimpan progres…</p>` : saveState.at ? `<p class="saveline">✓ Progres tersimpan ${esc(fmtTime(saveState.at))}</p>` : "";
 const goBtn = (t, cls = "btn gold block") => `<button class="${cls}" onclick='go(${JSON.stringify(t[0])}, ${JSON.stringify(t[1])})'>${esc(t[2])}</button>`;
 
 /* ---------- Screens ---------- */
@@ -643,14 +675,14 @@ const screens = {
     return `<section class="card stack">
       <div class="band geo"><div class="shapes" aria-hidden="true">${KAWUNG.repeat(3)}</div><span class="eyebrow">Tim Binkar × Risdikti × SDM · Senat P3MD</span>
       <h1>Survei Pemetaan 9 Nilai</h1></div>
-      <div class="facts-line"><span>27 pernyataan + 11 soft skill</span><span>± 6 menit</span><span>Tersimpan otomatis</span></div>
+      <div class="facts-line"><span>27 pernyataan + 11 soft skill</span><span>± 6 menit</span><span>Tersimpan di setiap pos</span></div>
       <ol class="steps">
         <li>Identitas<small>Nama, grup, elemen, kelas</small></li>
         <li>9 Nilai<small>3 pos · 27 pernyataan tentang serdik pada umumnya</small></li>
         <li>Soft skill<small>11 pertanyaan tentang dirimu</small></li>
         <li>Kirim<small>${CFG.submitUrl ? "sekali klik dari sini" : "lewat Google Form"}</small></li>
       </ol>
-      ${started && !checking ? `<p class="note">Kamu punya isian yang <b>belum dikirim</b> dan masih tersimpan di perangkat ini: ${st.n.filter(v => v !== null).length}/27 pernyataan 9 Nilai dan ${softAnswered()}/11 pertanyaan soft skill. Isian ini belum masuk ke data panitia sampai kamu menekan Kirim jawaban.</p>` : ""}
+      ${started && !checking ? `<p class="note">Isian terakhirmu tersimpan${saveState.at ? ` (${esc(fmtTime(saveState.at))})` : ""}: ${st.n.filter(v => v !== null).length}/27 pernyataan 9 Nilai dan ${softAnswered()}/11 pertanyaan soft skill. Jawaban baru dihitung panitia setelah kamu menekan Kirim jawaban.</p>` : ""}
       <div class="stack" style="gap:8px">
         <button class="btn gold block" ${checking ? "disabled" : ""} onclick="${started ? "resume()" : "go('id')"}">${checking ? "Memeriksa status pengisianmu…" : started ? "Lanjutkan ekspedisi" : "Mulai ekspedisi"}</button>
         ${started && !checking ? `<button class="btn alt block" onclick="restart()">Mulai dari awal</button>` : ""}
@@ -665,6 +697,7 @@ const screens = {
         <li>Tidak ada jawaban benar atau salah. Jawablah sesuai yang benar-benar terjadi, bukan yang seharusnya terjadi.</li>
         <li>Data identitas dipakai untuk merekap hasil per Grup dan Elemen, serta memetakan kebutuhan pengembangan soft skill tiap personil. Data hanya untuk keperluan internal Senat.</li>
         <li>Pengumpulan data ini murni untuk riset 9 Nilai di lingkungan P3MD, bukan penilaian individu. Hasil risetnya akan disampaikan secara transparan.</li>
+        <li>Isianmu tersimpan otomatis setiap kali satu pos selesai, jadi kamu bisa keluar dan melanjutkan nanti dari perangkat mana pun. Jawaban di pos yang belum selesai belum tersimpan.</li>
         <li>Kumpulkan lencana di setiap pos. Profil soft skill dan ringkasan jawabanmu terbuka setelah jawaban terkirim.</li>
       </ul>
     </section>`;
@@ -700,6 +733,7 @@ const screens = {
     return `<section class="card stack">
       <div class="band geo"><span class="eyebrow">Langkah 2 dari 4 · 9 Nilai P3MD</span>
       <h2>${done === NPOS ? "Semua pos tercapai" : done ? `${done} dari 3 pos tercapai` : "Tiga pos menunggu"}</h2></div>
+      ${saveNote()}
       <p class="note">Nilailah <b>serdik P3MDI pada umumnya</b> berdasarkan yang benar-benar kamu lihat, bukan dirimu sendiri dan bukan satu-dua orang tertentu.</p>
       ${goBtn(next >= 0 ? ["q", { qi: next }, st.n.some(v => v !== null) ? `Lanjut ke Pos ${nowPos + 1}` : "Berangkat ke Pos 1"] : nextAfterPos())}
       <ol class="route-list">${POS.map((v, p) => {
@@ -747,6 +781,7 @@ const screens = {
       <span class="eyebrow">${p === SOFT_POS ? "Markas tercapai" : `Pos ${p + 1} tercapai`}</span>
       <h2>Lencana ${esc(badgeName(p))}</h2>
       <p class="muted">${done} dari 4 lencana terkumpul.</p>
+      ${saveNote()}
       ${breather}
       ${shelf()}
       ${goBtn(nextAfterPos())}
@@ -919,13 +954,10 @@ async function checkStatus() {
       const wasLocal = !!st.sentAt;
       applyServerRecord(out); render();
       if (!wasLocal) toast("Kamu sudah pernah mengirim jawaban");
-    } else if (out.ok && out.submitted === false && st.sentAt) {
-      // The row was deleted in the sheet: the sheet is the source of truth, so
-      // clear the copy on this device too and start over from an empty form.
-      const nama = st.id.nama || (auth && auth.name) || "";
-      st = fresh(); st.id.nama = nama; st.screen = "intro"; save();
+    } else if (out.ok && out.submitted === false) {
+      if (out.draft) applyDraft(out.draft);
+      st.screen = "intro";
       render();
-      toast("Jawaban lamamu sudah dihapus panitia. Silakan isi dari awal.");
     } else render();
   } catch (e) { /* offline or slow: the receiver still rejects a second submission */ }
   finally { clearTimeout(timer); if (checking) { checking = false; render(); } }
@@ -1009,12 +1041,19 @@ function copyAns() {
 /* ---------- Actions ---------- */
 function restart() {
   const box = document.getElementById("app");
-  box.insertAdjacentHTML("afterbegin", `<section class="card stack" id="confirm"><b>Hapus semua jawaban di perangkat ini?</b>
-    <div class="row"><button class="btn" onclick="st=fresh();go('intro')">Ya, hapus</button><button class="btn alt" onclick="document.getElementById('confirm').remove()">Batal</button></div></section>`);
+  box.insertAdjacentHTML("afterbegin", `<section class="card stack" id="confirm"><b>Hapus isian yang tersimpan dan mulai dari awal?</b>
+    <div class="row"><button class="btn" onclick="startOver()">Ya, mulai dari awal</button><button class="btn alt" onclick="document.getElementById('confirm').remove()">Batal</button></div></section>`);
   window.scrollTo({ top: 0 });
 }
+function startOver() {
+  const nama = st.id.nama || (auth && auth.name) || "";
+  st = fresh(); st.id.nama = nama;
+  saveState = { busy: false, at: null, error: "" };
+  clearProgress();
+  go("intro");
+}
 function setId(k, v) { st.id[k] = v; save(); render(); const el = document.getElementById(k); if (el) el.focus({ preventScroll: true }); }
-function idNext() { if (idDone()) resume(); else document.getElementById("iderr").hidden = false; }
+function idNext() { if (idDone()) { saveProgress(); resume(); } else document.getElementById("iderr").hidden = false; }
 function openPos(p) { const it = posItems(p); const f = it.find(i => st.n[i] === null); go("q", { qi: f ?? it[0] }); }
 let busy = false;
 function answer(v) {
@@ -1024,7 +1063,7 @@ function answer(v) {
   busy = true;
   setTimeout(() => {
     busy = false;
-    if (!wasDone && posDone(p)) { go("posdone", { lastPos: p }); return; }
+    if (!wasDone && posDone(p)) { go("posdone", { lastPos: p }); saveProgress(); return; }
     advance();
   }, 260);
 }
@@ -1037,8 +1076,9 @@ function advance() {
 function back() { if (st.qi > 0) go("q", { qi: st.qi - 1 }); else go("map"); }
 function answerS(v) {
   if (busy) return;
-  const k = st.si;
+  const k = st.si, wasDone = sDone();
   st.s[k] = v; save(); render();
+  if (!wasDone && sDone()) saveProgress();
   busy = true;
   setTimeout(() => { busy = false; advanceS(); }, 260);
 }
@@ -1061,6 +1101,7 @@ function togglePick(k) {
 }
 function picksNext() {
   if (!picksDone()) return;
+  saveProgress();
   if (sDone()) go("posdone", { lastPos: SOFT_POS }); else resume();
 }
 

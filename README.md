@@ -155,8 +155,11 @@ Google sign-in does not work from `file://`; serve the folder over HTTP and add
   `config.js → form.entries` with the 75 `entry.<id>` numbers in order.
 - **Question text** lives in `index.html` in the `B` array (Bagian B) and the
   `VALUES` array (Bagian A). Keep the order identical to the form.
-- **Drafts** are stored in the browser's `localStorage`, keyed by the signed-in
-  email, so two people on one device never share answers. "Ganti akun" signs out
-  and shows a fresh draft for the next person.
+- **Drafts** live in the sheet, tab **Draf** (one row per email). The site saves
+  the whole form after the identity step, after each checkpoint, after S1-S10
+  and after S11 (`action: "save"`), and loads it back after sign-in on any
+  device (`action: "status"` returns `draft`). "Mulai dari awal" deletes the
+  draft (`action: "clear"`); submitting moves it to **Jawaban v2**. Nothing is
+  kept in the browser.
 - Badges count completed checkpoints only, never the value of an answer,
   so the gamification does not push answers up or down. There are no points.

@@ -11,6 +11,11 @@
  * not expired. One submission per email: a second submission is rejected
  * and the earlier answers are returned so the site can show them read-only.
  *
+ * Progress is saved server-side: the site sends the whole form state after
+ * identity, after each checkpoint and after the soft-skill stage ("save").
+ * Drafts live in the "Draf" tab (one row per email) and are removed when the
+ * final answers are submitted, so "Jawaban v2" only ever holds final answers.
+ *
  * Instrument v2:
  *   1-27   statements about Serdik P3MDI in general, scale 1-4
  *   S1-S10 soft-skill self-rating, scale 1-5
@@ -26,6 +31,7 @@ const SHEET_NAME = "Jawaban v2";
 const N_N = 27;   // 9 Nilai statements, scale 1-4
 const N_S = 10;   // soft skills, scale 1-5
 const N_PICK = 3; // S11: pick exactly 3
+const DRAFT_SHEET = "Draf";
 
 const SOFT_LABELS = [
   "Emotional Intelligence (Kecerdasan Emosional)",
@@ -95,6 +101,8 @@ function doPost(e) {
     const who = verifyToken_(body.idToken);
     if (body.action === "status") return json_(status_(who.email));
     if (body.action === "submit") return json_(submit_(who, body));
+    if (body.action === "save") return json_(save_(who, body));
+    if (body.action === "clear") return json_(clear_(who));
     return json_({ ok: false, error: "bad_action", message: "Permintaan tidak dikenal." });
   } catch (err) {
     const code = err && err.code ? err.code : "server_error";
@@ -106,7 +114,7 @@ function doPost(e) {
 
 /* Health check: opening the web app URL in a browser shows this. */
 function doGet() {
-  return json_({ ok: true, service: "Ekspedisi 9 Nilai P3MD", version: 2, time: new Date().toISOString() });
+  return json_({ ok: true, service: "Ekspedisi 9 Nilai P3MD", version: 3, time: new Date().toISOString() });
 }
 
 function verifyToken_(token) {
@@ -146,6 +154,7 @@ function submit_(who, body) {
     }
     const picksText = picks.map(k => SOFT_LABELS[k]).join(", ");
     sh.appendRow([now, who.email, nama, grup, elemen, kelas].concat(n, s, [picksText, now, 1]));
+    removeDraft_(who.email);
     return { ok: true, updated: false, at: now.toISOString() };
   } finally {
     lock.releaseLock();
@@ -154,12 +163,100 @@ function submit_(who, body) {
 
 function status_(email) {
   const sh = sheet_();
-  if (sh.getLastRow() < 2) return { ok: true, submitted: false };
-  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, HEADERS.length).getValues();
-  for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][1]).toLowerCase() === email) return Object.assign({ ok: true }, rowToRecord_(rows[i]));
+  if (sh.getLastRow() >= 2) {
+    const rows = sh.getRange(2, 1, sh.getLastRow() - 1, HEADERS.length).getValues();
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][1]).toLowerCase() === email) return Object.assign({ ok: true }, rowToRecord_(rows[i]));
+    }
   }
-  return { ok: true, submitted: false };
+  const d = draftSheet_();
+  const idx = draftEmails_(d).indexOf(email);
+  if (idx < 0) return { ok: true, submitted: false };
+  return { ok: true, submitted: false, draft: draftToRecord_(d.getRange(idx + 2, 1, 1, DRAFT_HEADERS.length).getValues()[0]) };
+}
+
+/* ---------- Drafts ---------- */
+const DRAFT_HEADERS = ["Email", "Terakhir disimpan"].concat(HEADERS.slice(2, 6 + N_N + N_S + 1));
+
+function save_(who, body) {
+  const nama = String(body.nama || "").trim().slice(0, 120);
+  const grup = oneOf_(body.grup, ["1", "2", "3", "4"]);
+  const elemen = oneOf_(body.elemen, ["1", "2", "3"]);
+  const kelas = oneOf_(body.kelas, "ABCDEFGH".split(""));
+  const n = partial_(body.n, N_N, 4);
+  const s = partial_(body.s, N_S, 5);
+  const picks = Array.isArray(body.picks) ? body.picks.map(Number).filter((k, i, a) => k >= 0 && k < N_S && Math.floor(k) === k && a.indexOf(k) === i).slice(0, N_PICK) : [];
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = sheet_();
+    const idx = emails_(sh).indexOf(who.email);
+    if (idx >= 0) {
+      const prev = rowToRecord_(sh.getRange(idx + 2, 1, 1, HEADERS.length).getValues()[0]);
+      return Object.assign({ ok: false, error: "already_submitted", message: "Akun ini sudah mengirim jawaban." }, prev);
+    }
+    const now = new Date();
+    const row = [who.email, now, nama, grup, elemen, kelas].concat(n, s, [picks.map(k => SOFT_LABELS[k]).join(", ")]);
+    const d = draftSheet_();
+    const di = draftEmails_(d).indexOf(who.email);
+    if (di >= 0) d.getRange(di + 2, 1, 1, DRAFT_HEADERS.length).setValues([row]);
+    else d.appendRow(row);
+    return { ok: true, at: now.toISOString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function clear_(who) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try { removeDraft_(who.email); return { ok: true }; } finally { lock.releaseLock(); }
+}
+
+function removeDraft_(email) {
+  const d = draftSheet_();
+  const di = draftEmails_(d).indexOf(email);
+  if (di >= 0) d.deleteRow(di + 2);
+}
+
+function draftEmails_(d) {
+  return d.getLastRow() > 1 ? d.getRange(2, 1, d.getLastRow() - 1, 1).getValues().map(r => String(r[0]).toLowerCase()) : [];
+}
+
+function draftToRecord_(r) {
+  const num = v => (v === "" || v === null) ? null : Number(v);
+  const o = 6;
+  const picksText = String(r[o + N_N + N_S] || "");
+  return {
+    at: new Date(r[1]).toISOString(),
+    nama: String(r[2]), grup: String(r[3]), elemen: String(r[4]), kelas: String(r[5]),
+    n: r.slice(o, o + N_N).map(num),
+    s: r.slice(o + N_N, o + N_N + N_S).map(num),
+    picks: SOFT_LABELS.map((l, k) => picksText.indexOf(l) >= 0 ? k : -1).filter(k => k >= 0)
+  };
+}
+
+function oneOf_(v, list) { v = String(v || ""); return list.indexOf(v) >= 0 ? v : ""; }
+
+function partial_(arr, n, max) {
+  if (!Array.isArray(arr) || arr.length !== n) fail_("invalid", "Format progres tidak sesuai. Muat ulang halaman lalu coba lagi.");
+  return arr.map(v => {
+    if (v === null || v === "") return "";
+    const x = Number(v);
+    if (!(x >= 1 && x <= max && Math.floor(x) === x)) fail_("invalid", "Ada jawaban di luar skala.");
+    return x;
+  });
+}
+
+function draftSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let d = ss.getSheetByName(DRAFT_SHEET);
+  if (!d) d = ss.insertSheet(DRAFT_SHEET);
+  if (d.getLastRow() === 0) {
+    d.getRange(1, 1, 1, DRAFT_HEADERS.length).setValues([DRAFT_HEADERS]).setFontWeight("bold").setWrap(true);
+    d.setFrozenRows(1);
+  }
+  return d;
 }
 
 function emails_(sh) {
@@ -224,5 +321,6 @@ function json_(obj) {
 /* Run once from the editor to create the sheet tab and grant permissions. */
 function setup() {
   sheet_();
+  draftSheet_();
   UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=x", { muteHttpExceptions: true });
 }
