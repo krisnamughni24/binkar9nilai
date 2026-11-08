@@ -630,7 +630,7 @@ const screens = {
     return `<section class="card stack">
       <div class="band geo"><div class="shapes" aria-hidden="true">${KAWUNG.repeat(3)}</div><span class="eyebrow">Tim Binkar × Risdikti × SDM · Senat P3MD</span>
       <h1>Survei Pemetaan 9 Nilai</h1></div>
-      <p class="lede">Halo, rekan Serdik! Masuk dulu dengan akun Google P3MD-mu. Jawaban hanya bisa dikirim dari akun <b class="nowrap">@${esc(DOMAIN || "p3md.sbm-itb.ac.id")}</b>, jadi kita pastikan dari awal.</p>
+      <p class="lede">Halo, rekan Serdik! Masuk dulu dengan akun Google P3MD-mu. Jawaban hanya bisa dikirim dari akun <b class="nowrap">@${esc(DOMAIN || "p3md.sbm-itb.ac.id")}</b></p>
       ${CFG.googleClientId ? `<div class="gwrap"><div id="gbtn" class="gbtn"></div>${gisReady ? "" : `<p class="muted" style="font-size:14px">Memuat tombol masuk…</p>`}</div>`
         : `<p class="status warn">Tombol masuk belum aktif: panitia belum mengisi Google Client ID di config.js.</p>`}
       ${authError ? `<p class="err" role="alert">${esc(authError)}</p>` : ""}
@@ -643,7 +643,6 @@ const screens = {
     return `<section class="card stack">
       <div class="band geo"><div class="shapes" aria-hidden="true">${KAWUNG.repeat(3)}</div><span class="eyebrow">Tim Binkar × Risdikti × SDM · Senat P3MD</span>
       <h1>Survei Pemetaan 9 Nilai</h1></div>
-      <p class="lede">Halo, rekan Serdik! Lewati 3 pos 9 Nilai, lalu mampir ke markas soft skill. Kumpulkan keempat lencananya.</p>
       <div class="facts-line"><span>27 pernyataan + 11 soft skill</span><span>± 6 menit</span><span>Tersimpan otomatis</span></div>
       <ol class="steps">
         <li>Identitas<small>Nama, grup, elemen, kelas</small></li>
@@ -651,13 +650,13 @@ const screens = {
         <li>Soft skill<small>11 pertanyaan tentang dirimu</small></li>
         <li>Kirim<small>${CFG.submitUrl ? "sekali klik dari sini" : "lewat Google Form"}</small></li>
       </ol>
+      ${started && !checking ? `<p class="note">Data pengisian sebelumnya masih tersimpan di perangkat ini.</p>` : ""}
       <div class="stack" style="gap:8px">
         <button class="btn gold block" ${checking ? "disabled" : ""} onclick="${started ? "resume()" : "go('id')"}">${checking ? "Memeriksa status pengisianmu…" : started ? "Lanjutkan ekspedisi" : "Mulai ekspedisi"}</button>
-        ${started && !checking ? `<button class="btn link" onclick="restart()">Mulai dari awal</button>` : ""}
+        ${started && !checking ? `<button class="btn alt block" onclick="restart()">Mulai dari awal</button>` : ""}
       </div>
     </section>
     <section class="card stack">
-      <span class="eyebrow">Dua bagian, dua sudut pandang</span>
       <div class="parts">
         <div class="part peer"><b>1 · Pemetaan 9 Nilai</b><p>Yang dinilai adalah <b>serdik P3MDI secara keseluruhan</b>, bukan dirimu dan bukan satu-dua orang tertentu. Bayangkan perilaku serdik pada umumnya yang kamu lihat sehari-hari.</p></div>
         <div class="part self"><b>2 · Pemetaan soft skill</b><p>Kamu menilai <b>kemampuan dirimu sendiri</b> saat ini, sebagai bahan merancang program pengembangan personil.</p></div>
