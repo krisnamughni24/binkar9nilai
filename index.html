@@ -650,7 +650,7 @@ const screens = {
         <li>Soft skill<small>11 pertanyaan tentang dirimu</small></li>
         <li>Kirim<small>${CFG.submitUrl ? "sekali klik dari sini" : "lewat Google Form"}</small></li>
       </ol>
-      ${started && !checking ? `<p class="note">Data pengisian sebelumnya masih tersimpan di perangkat ini.</p>` : ""}
+      ${started && !checking ? `<p class="note">Kamu punya isian yang belum dikirim dan masih tersimpan di perangkat ini.</p>` : ""}
       <div class="stack" style="gap:8px">
         <button class="btn gold block" ${checking ? "disabled" : ""} onclick="${started ? "resume()" : "go('id')"}">${checking ? "Memeriksa status pengisianmu…" : started ? "Lanjutkan ekspedisi" : "Mulai ekspedisi"}</button>
         ${started && !checking ? `<button class="btn alt block" onclick="restart()">Mulai dari awal</button>` : ""}
@@ -920,10 +920,12 @@ async function checkStatus() {
       applyServerRecord(out); render();
       if (!wasLocal) toast("Kamu sudah pernah mengirim jawaban");
     } else if (out.ok && out.submitted === false && st.sentAt) {
-      // The row was deleted in the sheet: unlock so this serdik can send again.
-      st.sentAt = null; st.screen = "intro"; save();
+      // The row was deleted in the sheet: the sheet is the source of truth, so
+      // clear the copy on this device too and start over from an empty form.
+      const nama = st.id.nama || (auth && auth.name) || "";
+      st = fresh(); st.id.nama = nama; st.screen = "intro"; save();
       render();
-      toast("Jawabanmu bisa dikirim ulang");
+      toast("Jawaban lamamu sudah dihapus panitia. Silakan isi dari awal.");
     } else render();
   } catch (e) { /* offline or slow: the receiver still rejects a second submission */ }
   finally { clearTimeout(timer); if (checking) { checking = false; render(); } }
